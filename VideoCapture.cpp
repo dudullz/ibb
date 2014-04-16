@@ -1,7 +1,7 @@
 
 #include "VideoCapture.h"
 
-namespace bgslibrary
+namespace ibb
 {
   namespace VC_ROI
   {

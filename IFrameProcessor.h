@@ -18,7 +18,7 @@ along with BGSLibrary.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cv.h>
 
-namespace bgslibrary
+namespace ibb
 {
   class IFrameProcessor
   {

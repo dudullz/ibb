@@ -16,7 +16,7 @@ along with BGSLibrary.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
 
-namespace bgslibrary
+namespace ibb
 {
   const int KEY_REPEAT = 'r';
   const int KEY_SPACE = 32;

@@ -3,7 +3,7 @@
 #include "VideoAnalysis.h"
 #include <iostream>
 
-namespace bgslibrary
+namespace ibb
 {
   class Main
   {

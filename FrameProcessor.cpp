@@ -4,7 +4,7 @@
 using namespace std;
 using namespace cv;
 
-namespace bgslibrary
+namespace ibb
 {
   FrameProcessor::FrameProcessor() : firstTime(true), frameNumber(0), duration(0), tictoc(""), frameToStop(0)
   {

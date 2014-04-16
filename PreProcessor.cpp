@@ -1,7 +1,7 @@
 
 #include "PreProcessor.h"
 
-namespace bgslibrary
+namespace ibb
 {
   PreProcessor::PreProcessor() : firstTime(true), equalizeHist(false), gaussianBlur(false)
   {

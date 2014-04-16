@@ -20,7 +20,7 @@ along with BGSLibrary.  If not, see <http://www.gnu.org/licenses/>.
 #include <cv.h>
 #include <highgui.h>
 
-namespace bgslibrary
+namespace ibb
 {
   class PreProcessor
   {

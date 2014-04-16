@@ -22,7 +22,7 @@ along with BGSLibrary.  If not, see <http://www.gnu.org/licenses/>.
 #include "VideoCapture.h"
 #include "FrameProcessor.h"
 
-namespace bgslibrary
+namespace ibb
 {
   class VideoAnalysis
   {

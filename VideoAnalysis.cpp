@@ -1,7 +1,7 @@
 
 #include "VideoAnalysis.h"
 
-namespace bgslibrary
+namespace ibb
 {
   VideoAnalysis::VideoAnalysis() : use_file(false), use_camera(false), use_imgs(false), cameraIndex(0), use_comp(false), frameToStop(0)
   {

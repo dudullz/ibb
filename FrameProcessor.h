@@ -38,7 +38,7 @@ along with BGSLibrary.  If not, see <http://www.gnu.org/licenses/>.
 // http://www2.ulg.ac.be/telecom/research/vibe/
 #include "package_bgs/pt/PixelBasedAdaptiveSegmenter.h"
 
-namespace bgslibrary
+namespace ibb
 {
   class FrameProcessor : public IFrameProcessor
   {

@@ -10,7 +10,7 @@
 #include "Config.h"
 #include "IFrameProcessor.h"
 
-namespace bgslibrary
+namespace ibb
 {
   class VideoCapture
   {
