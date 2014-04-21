@@ -28,12 +28,6 @@ namespace ibb
       preProcessor = new PreProcessor;
 	}
 
-    if (enableFrameDifferenceBGS)
-      frameDifference = new FrameDifferenceBGS;
-
-    if (enableStaticFrameDifferenceBGS)
-      staticFrameDifference = new StaticFrameDifferenceBGS;
-
     if (enableWeightedMovingMeanBGS)
       weightedMovingMean = new WeightedMovingMeanBGS;
 
@@ -48,11 +42,6 @@ namespace ibb
 
     if (enableAdaptiveBackgroundLearning)
       adaptiveBackgroundLearning = new AdaptiveBackgroundLearning;
-
-#if CV_MAJOR_VERSION >= 2 && CV_MINOR_VERSION >= 4 && CV_SUBMINOR_VERSION >= 3
-    if (enableGMG)
-      gmg = new GMG;
-#endif
 
     if(enablePBAS)
 	{
@@ -73,7 +62,7 @@ namespace ibb
 		lsvm_detector.load( models );
 		enableUpperBodayDetector = true;
 	
-    generateColors( colors, lsvm_detector.getClassNames().size() );
+		generateColors( colors, lsvm_detector.getClassNames().size() );
 	}
 	
 	void FrameProcessor::setFaceDetector(std::string face_model)
@@ -136,12 +125,6 @@ namespace ibb
     if (enablePreProcessor)
       preProcessor->process(img_input, img_prep);
 
-    if (enableFrameDifferenceBGS)
-      process("FrameDifferenceBGS", frameDifference, img_prep, img_framediff);
-
-    if (enableStaticFrameDifferenceBGS)
-      process("StaticFrameDifferenceBGS", staticFrameDifference, img_prep, img_staticfdiff);
-
     if (enableWeightedMovingMeanBGS)
       process("WeightedMovingMeanBGS", weightedMovingMean, img_prep, img_wmovmean);
 
@@ -171,11 +154,6 @@ namespace ibb
     if (enableAdaptiveBackgroundLearning)
       process("AdaptiveBackgroundLearning", adaptiveBackgroundLearning, img_prep, img_bkgl_fgmask);
 
-#if CV_MAJOR_VERSION >= 2 && CV_MINOR_VERSION >= 4 && CV_SUBMINOR_VERSION >= 3
-    if (enableGMG)
-      process("GMG", gmg, img_prep, img_gmg);
-#endif
-
     if(enablePBAS)
 	{
       process("PBAS", pixelBasedAdaptiveSegmenter, img_prep, img_pt_pbas);
@@ -201,6 +179,7 @@ namespace ibb
    		if( enableUpperBodayDetector )
 		{
 			cout << "1.   Run Upper Body Detector (overlapThreshold: " << overlapThreshold << ", numThreads: " << numThreads << ")" << endl;
+			cout << fpUBModel << endl;
 			vector<cv::LatentSvmDetector::ObjectDetection> detections;
 			lsvm_detector.detect( img_input, detections, overlapThreshold, numThreads);
 			cout << "Detections: " << detections.size() << endl;
@@ -341,11 +320,6 @@ namespace ibb
     if(enablePBAS)
       delete pixelBasedAdaptiveSegmenter;
 
-#if CV_MAJOR_VERSION >= 2 && CV_MINOR_VERSION >= 4 && CV_SUBMINOR_VERSION >= 3
-    if (enableGMG)
-      delete gmg;
-#endif
-
     if (enableAdaptiveBackgroundLearning)
       delete adaptiveBackgroundLearning;
 
@@ -360,12 +334,6 @@ namespace ibb
 
     if (enableWeightedMovingMeanBGS)
       delete weightedMovingMean;
-
-    if (enableStaticFrameDifferenceBGS)
-      delete staticFrameDifference;
-
-    if (enableFrameDifferenceBGS)
-      delete frameDifference;
 
     if (enablePreProcessor)
       delete preProcessor;
@@ -394,17 +362,11 @@ namespace ibb
     cvWriteString(fs, "tictoc", tictoc.c_str());
 
     cvWriteInt(fs, "enablePreProcessor", enablePreProcessor);
-
-    cvWriteInt(fs, "enableFrameDifferenceBGS", enableFrameDifferenceBGS);
-    cvWriteInt(fs, "enableStaticFrameDifferenceBGS", enableStaticFrameDifferenceBGS);
     cvWriteInt(fs, "enableWeightedMovingMeanBGS", enableWeightedMovingMeanBGS);
     cvWriteInt(fs, "enableWeightedMovingVarianceBGS", enableWeightedMovingVarianceBGS);
     cvWriteInt(fs, "enableMixtureOfGaussianV1BGS", enableMixtureOfGaussianV1BGS);
     cvWriteInt(fs, "enableMixtureOfGaussianV2BGS", enableMixtureOfGaussianV2BGS);
     cvWriteInt(fs, "enableAdaptiveBackgroundLearning", enableAdaptiveBackgroundLearning);
-#if CV_MAJOR_VERSION >= 2 && CV_MINOR_VERSION >= 4 && CV_SUBMINOR_VERSION >= 3
-    cvWriteInt(fs, "enableGMG", enableGMG);
-#endif
 
     cvWriteInt(fs, "enablePBAS", enablePBAS);
     cvReleaseFileStorage(&fs);
@@ -421,17 +383,11 @@ namespace ibb
     tictoc = cvReadStringByName(fs, 0, "tictoc", "");
 
     enablePreProcessor = cvReadIntByName(fs, 0, "enablePreProcessor", true);
-
-    enableFrameDifferenceBGS = cvReadIntByName(fs, 0, "enableFrameDifferenceBGS", false);
-    enableStaticFrameDifferenceBGS = cvReadIntByName(fs, 0, "enableStaticFrameDifferenceBGS", false);
     enableWeightedMovingMeanBGS = cvReadIntByName(fs, 0, "enableWeightedMovingMeanBGS", false);
     enableWeightedMovingVarianceBGS = cvReadIntByName(fs, 0, "enableWeightedMovingVarianceBGS", false);
     enableMixtureOfGaussianV1BGS = cvReadIntByName(fs, 0, "enableMixtureOfGaussianV1BGS", false);
     enableMixtureOfGaussianV2BGS = cvReadIntByName(fs, 0, "enableMixtureOfGaussianV2BGS", false);
     enableAdaptiveBackgroundLearning = cvReadIntByName(fs, 0, "enableAdaptiveBackgroundLearning", false);
-#if CV_MAJOR_VERSION >= 2 && CV_MINOR_VERSION >= 4 && CV_SUBMINOR_VERSION >= 3
-    enableGMG = cvReadIntByName(fs, 0, "enableGMG", false);
-#endif
     enablePBAS = cvReadIntByName(fs, 0, "enablePBAS", false);
 
     cvReleaseFileStorage(&fs);

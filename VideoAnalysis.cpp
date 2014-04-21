@@ -21,7 +21,7 @@ namespace ibb
       "{hp|help|false|Print help message}"
       "{uf|use_file|false|Use video file}"
       "{fn|filename||Specify video file}"
-      "{uc|use_cam|false|Use camera}"
+      "{uc|use_cam|true|Use camera}"
       "{ca|camera|0|Specify camera index}"
       "{co|use_comp|false|Use mask comparator}"
       "{st|stopAt|0|Frame number to stop}"
@@ -32,10 +32,11 @@ namespace ibb
 		"{csv|csv_path||Specify the absolute path to save the probability map to csv file, if any}"
 		"{ub|ub_model||Specify the absolute path to the upper boddy model file}"
 		"{face|face_model||Specify the absolute path to the face model file}"
+		"{ubd|use_ub_detector|false|Use Upper Body Detector}"
       ;
     cv::CommandLineParser cmd(argc, argv, keys);
 
-    if (argc <= 1 || cmd.get<bool>("help") == true)
+    if (argc > 2 || cmd.get<bool>("help") == true)
     {
       std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
       std::cout << "Avaible options:" << std::endl;
@@ -80,6 +81,14 @@ namespace ibb
 	vaUBModel = cmd.get<std::string>("ub_model");
 	vaFaceModel = cmd.get<std::string>("face_model");
 
+		
+		// Always allow face detection, since it's fast, relatively
+		vaFaceModel = "./face.xml";
+		
+    use_ubd = cmd.get<bool>("use_ub_detector");
+		if(use_ubd)
+			vaUBModel = "./ubd.xml";
+		
     if (flag == true)
     {
       use_comp = cmd.get<bool>("use_comp");

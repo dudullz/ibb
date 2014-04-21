@@ -36,6 +36,7 @@ namespace ibb
     bool use_comp;
     long frameToStop;
     std::string imgref;
+		bool use_ubd;
 	
 	bool use_imgs;
 	std::string imgPath;

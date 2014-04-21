@@ -62,6 +62,6 @@ namespace ibb
 
 int main(int argc, const char **argv)
 {
-  bgslibrary::Main::start(argc, argv);
+  ibb::Main::start(argc, argv);
   return 0;
 }

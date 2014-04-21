@@ -22,16 +22,11 @@ along with BGSLibrary.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "package_bgs/IBGS.h"
 
-#include "package_bgs/FrameDifferenceBGS.h"
-#include "package_bgs/StaticFrameDifferenceBGS.h"
 #include "package_bgs/WeightedMovingMeanBGS.h"
 #include "package_bgs/WeightedMovingVarianceBGS.h"
 #include "package_bgs/MixtureOfGaussianV1BGS.h"
 #include "package_bgs/MixtureOfGaussianV2BGS.h"
 #include "package_bgs/AdaptiveBackgroundLearning.h"
-#if CV_MAJOR_VERSION >= 2 && CV_MINOR_VERSION >= 4 && CV_SUBMINOR_VERSION >= 3
-#include "package_bgs/GMG.h"
-#endif
 
 // The PBAS algorithm was removed from BGSLibrary because it is
 // based on patented algorithm ViBE
@@ -53,14 +48,6 @@ namespace ibb
     PreProcessor* preProcessor;
     bool enablePreProcessor;
 
-    cv::Mat img_framediff;
-    FrameDifferenceBGS* frameDifference;
-    bool enableFrameDifferenceBGS;
-
-    cv::Mat img_staticfdiff;
-    StaticFrameDifferenceBGS* staticFrameDifference;
-    bool enableStaticFrameDifferenceBGS;
-
     cv::Mat img_wmovmean;
     WeightedMovingMeanBGS* weightedMovingMean;
     bool enableWeightedMovingMeanBGS;
@@ -80,12 +67,6 @@ namespace ibb
     cv::Mat img_bkgl_fgmask;
     AdaptiveBackgroundLearning* adaptiveBackgroundLearning;
     bool enableAdaptiveBackgroundLearning;
-
-#if CV_MAJOR_VERSION >= 2 && CV_MINOR_VERSION >= 4 && CV_SUBMINOR_VERSION >= 3
-    cv::Mat img_gmg;
-    GMG* gmg;
-    bool enableGMG;
-#endif
 
     cv::Mat img_pt_pbas;
 	cv::Mat img_pt_pbas_prob;

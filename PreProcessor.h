@@ -19,6 +19,7 @@ along with BGSLibrary.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <cv.h>
 #include <highgui.h>
+#include <opencv2/contrib/contrib.hpp>
 
 namespace ibb
 {
