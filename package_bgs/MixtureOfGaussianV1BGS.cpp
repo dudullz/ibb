@@ -58,7 +58,8 @@ void MixtureOfGaussianV1BGS::process(const cv::Mat &img_input, cv::Mat &img_outp
 void MixtureOfGaussianV1BGS::saveConfig()
 {
 #if defined(_WIN32)
-	CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\MixtureOfGaussianV1BGS.xml", 0, CV_STORAGE_WRITE);
+	//CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\MixtureOfGaussianV1BGS.xml", 0, CV_STORAGE_WRITE);
+	CvFileStorage* fs = cvOpenFileStorage("config\\MixtureOfGaussianV1BGS.xml", 0, CV_STORAGE_WRITE);
 #else
     CvFileStorage* fs = cvOpenFileStorage("./config/MixtureOfGaussianV1BGS.xml", 0, CV_STORAGE_WRITE);
 #endif
@@ -74,7 +75,8 @@ void MixtureOfGaussianV1BGS::saveConfig()
 void MixtureOfGaussianV1BGS::loadConfig()
 {
 #if defined(_WIN32)
-	CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\MixtureOfGaussianV1BGS.xml", 0, CV_STORAGE_READ);
+	//CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\MixtureOfGaussianV1BGS.xml", 0, CV_STORAGE_READ);
+	CvFileStorage* fs = cvOpenFileStorage("config\\MixtureOfGaussianV1BGS.xml", 0, CV_STORAGE_READ);
 #else
     CvFileStorage* fs = cvOpenFileStorage("./config/MixtureOfGaussianV1BGS.xml", 0, CV_STORAGE_READ);
 #endif

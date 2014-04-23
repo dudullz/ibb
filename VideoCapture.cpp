@@ -307,7 +307,8 @@ void VideoCapture::setUpImages()
   void VideoCapture::saveConfig()
   {
 #if defined(_WIN32)
-	CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\VideoCapture.xml", 0, CV_STORAGE_WRITE);
+	//CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\VideoCapture.xml", 0, CV_STORAGE_WRITE);
+	CvFileStorage* fs = cvOpenFileStorage("config\\VideoCapture.xml", 0, CV_STORAGE_WRITE);
 #else
     CvFileStorage* fs = cvOpenFileStorage("./config/VideoCapture.xml", 0, CV_STORAGE_WRITE);
 #endif   
@@ -329,7 +330,8 @@ void VideoCapture::setUpImages()
   void VideoCapture::loadConfig()
   {
 #if defined(_WIN32)
-	CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\VideoCapture.xml", 0, CV_STORAGE_READ);
+	//CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\VideoCapture.xml", 0, CV_STORAGE_READ);
+	CvFileStorage* fs = cvOpenFileStorage("config\\VideoCapture.xml", 0, CV_STORAGE_READ);
 #else
     CvFileStorage* fs = cvOpenFileStorage("./config/VideoCapture.xml", 0, CV_STORAGE_READ);
 #endif

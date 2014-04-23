@@ -113,7 +113,8 @@ namespace ibb
   void PreProcessor::saveConfig()
   {
 #if defined(_WIN32)
-	CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\PreProcessor.xml", 0, CV_STORAGE_WRITE);
+	//CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\PreProcessor.xml", 0, CV_STORAGE_WRITE);
+	CvFileStorage* fs = cvOpenFileStorage("config\\PreProcessor.xml", 0, CV_STORAGE_WRITE);
 #else
     CvFileStorage* fs = cvOpenFileStorage("./config/PreProcessor.xml", 0, CV_STORAGE_WRITE);
 #endif
@@ -128,7 +129,8 @@ namespace ibb
   void PreProcessor::loadConfig()
   {
 #if defined(_WIN32)
-	CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\PreProcessor.xml", 0, CV_STORAGE_READ);
+	//CvFileStorage* fs = cvOpenFileStorage("F:\\Developer\\BGS\\AndrewsSobral\\bgslibrary\\config\\PreProcessor.xml", 0, CV_STORAGE_READ);
+	CvFileStorage* fs = cvOpenFileStorage("config\\PreProcessor.xml", 0, CV_STORAGE_READ);
 #else
     CvFileStorage* fs = cvOpenFileStorage("./config/PreProcessor.xml", 0, CV_STORAGE_READ);
 #endif   
