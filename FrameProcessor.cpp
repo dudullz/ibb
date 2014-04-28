@@ -10,6 +10,11 @@ namespace ibb
   {
     std::cout << "FrameProcessor()" << std::endl;
 
+	MHI_DURATION = 1;
+	MAX_TIME_DELTA = 0.5;
+	MIN_TIME_DELTA = 0.05;
+	N = 4;
+
     loadConfig();
     saveConfig();
   }
@@ -251,11 +256,28 @@ namespace ibb
 //		imshow( "Motion", motion );
 		
 		char rlts[128];
-		sprintf(rlts, "性别：男（98%）\n年龄：30~35岁 (95%)");
-		putText( img_prep, rlts, Point(10,20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0,255,0), 2 );
-		
+		sprintf(rlts, "Gender: Male");
+		putText( img_prep, rlts, Point(10,20), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,255,0), 2 );
+		sprintf(rlts, "Age: 30-35");
+		putText( img_prep, rlts, Point(10,50), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,255,0), 2 );
+
+		sprintf(rlts, "FPS:10.29");
+		putText( img_prep, rlts, Point(500,30), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,0,255), 5 );
+		putText( img_prep, rlts, Point(500,30), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(255,255,255), 1 );
+
+		int x = img_prep.cols / 3 - 15;
+		Point convex[4];
+		convex[0].x = x;	convex[0].y = 15; 
+		convex[1].x = img_prep.cols - x + 30;	convex[1].y = 15;
+		convex[2].x = img_prep.cols - x + 30;	convex[2].y = 55;
+		convex[3].x = x;	convex[3].y = 55;
+		fillConvexPoly(img_prep, convex, 4, CV_RGB(255,255,255));
+		sprintf(rlts, "Left Arm Lifted");
+		putText( img_prep, rlts, Point(200,45), FONT_HERSHEY_SIMPLEX, 1.00, CV_RGB(255,0,128), 3 );
+					
 		cv::imshow("Pre Processor", img_prep);
-		
+		imwrite("LeftUp.jpg", img_prep);
+
     firstTime = false;
   }
 	
