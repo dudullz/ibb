@@ -36,7 +36,7 @@ namespace ibb
       ;
     cv::CommandLineParser cmd(argc, argv, keys);
 
-    if (argc > 2 || cmd.get<bool>("help") == true)
+    if (argc < 2 || cmd.get<bool>("help") == true)
     {
       std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
       std::cout << "Avaible options:" << std::endl;

@@ -67,6 +67,23 @@ namespace ibb
 		cv::CascadeClassifier face_detector;
 		bool enableFaceDetector;
 		
+		/// now for MHI and its gangs
+		// various tracking parameters (in seconds)
+		const double MHI_DURATION = 1;
+		const double MAX_TIME_DELTA = 0.5;
+		const double MIN_TIME_DELTA = 0.05;
+		// number of cyclic frame buffer used for motion detection
+		// (should, probably, depend on FPS)
+		const int N = 4;
+		
+		// ring image buffer
+		std::vector<cv::Mat> mhi_buffer;
+		int mhi_last;
+		
+		cv::Mat mhi; // MHI
+		cv::Mat mhi_silh, mhi_orient, mhi_mask, mhi_segmask;
+		cv::Mat motion;
+		
   public:
     FrameProcessor();
     ~FrameProcessor();
@@ -97,5 +114,7 @@ namespace ibb
 
     void saveConfig();
     void loadConfig();
+		
+		void updateMHI( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
   };
 }

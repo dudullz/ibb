@@ -48,6 +48,11 @@ namespace ibb
 		std::cout << "********* Use PBAS"  << std::endl;
       pixelBasedAdaptiveSegmenter = new PixelBasedAdaptiveSegmenter;
 	}
+		
+		/// we are going to perform MHI anyways, so the relevant variables are initilised here
+		/// even the face detection and UpperBodyDetector is actually setup after this init()
+		mhi_buffer.resize(N);
+		mhi_last = 0;
   }
 	
 	void FrameProcessor::setUpperBodyDetector(std::string ub_model)
@@ -235,15 +240,114 @@ namespace ibb
 //				int prediction = model->predict(face_resized);
 				// And finally write all we've found out to the original image!
 				// First of all draw a green rectangle around the detected face:
-				rectangle(img_prep, face_i, CV_RGB(0, 255,0), 1);
+				rectangle(img_prep, face_i, CV_RGB(255,0,0), 4);
 //				string gender;
 			}
 		}
+		
+		/// By now we should have the correction positon of the stadning person (through the deteced face
+		/// and/or the upper body detection result)
+//		updateMHI( img_prep, motion, 30 );
+//		imshow( "Motion", motion );
+		
+		char rlts[128];
+		sprintf(rlts, "性别：男（98%）\n年龄：30~35岁 (95%)");
+		putText( img_prep, rlts, Point(10,20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0,255,0), 2 );
 		
 		cv::imshow("Pre Processor", img_prep);
 		
     firstTime = false;
   }
+	
+	void FrameProcessor::updateMHI( const cv::Mat &img, cv::Mat &dst, int diff_threshold)
+	{
+		double timestamp = (double)clock()/CLOCKS_PER_SEC; // get current time in seconds
+		int idx1 = mhi_last, idx2;
+		
+		cvtColor( img, mhi_buffer[mhi_last], CV_BGR2GRAY ); // convert frame to grayscale
+		
+		idx2 = (mhi_last + 1) % N; // index of (last - (N-1))th frame
+		mhi_last = idx2;
+		
+		if( mhi_buffer[idx1].size() != mhi_buffer[idx2].size() )
+			mhi_silh = Mat::ones(img.size(), CV_8U)*255;
+		else
+			absdiff(mhi_buffer[idx1], mhi_buffer[idx2], mhi_silh); // get difference between frames
+
+//		imshow( "Silh", mhi_silh );
+		threshold( mhi_silh, mhi_silh, diff_threshold, 1, CV_THRESH_BINARY ); // and threshold it
+		
+		/// make a vertical black stripe to the image
+		/// make sure that the motions on each side are not connected!
+		int height = img.rows;
+		int width = 120;
+		int x = img.cols / 2 - width / 2;
+		int y = 0;
+		
+		cv::Rect roi(x, y, width, height);
+		cv::Mat vertical_bar = mhi_silh( roi );
+		subtract(vertical_bar, vertical_bar, vertical_bar);
+//		imshow("mask_bar", vertical_bar);
+		
+		if( mhi.empty() )
+			mhi = Mat::zeros(mhi_silh.size(), CV_32F);
+		updateMotionHistory( mhi_silh, mhi, timestamp, MHI_DURATION ); // update MHI
+		
+		// convert MHI to blue 8u image
+		mhi.convertTo(mhi_mask, CV_8U, 255./MHI_DURATION,
+									(MHI_DURATION - timestamp)*255./MHI_DURATION);
+		dst = Mat::zeros(mhi_mask.size(), CV_8UC3);
+		insertChannel(mhi_mask, dst, 0);
+		
+		// calculate motion gradient orientation and valid orientation mask
+		calcMotionGradient( mhi, mhi_mask, mhi_orient, MAX_TIME_DELTA, MIN_TIME_DELTA, 3 );
+		
+		// segment motion: get sequence of motion components
+		// segmask is marked motion components map. It is not used further
+		vector<Rect> brects;
+		segmentMotion(mhi, mhi_segmask, brects, timestamp, MAX_TIME_DELTA );
+		imshow( "segmask", mhi_segmask );
+		
+		// iterate through the motion components,
+		// One more iteration (i == -1) corresponds to the whole image (global motion)
+		for( int i = -1; i < (int)brects.size(); i++ ) {
+			Rect roi; Scalar color; double magnitude;
+			Mat maski = mhi_mask;
+			if( i < 0 ) { // case of the whole image
+				roi = Rect(0, 0, img.cols, img.rows);
+				color = Scalar::all(255);
+				magnitude = 100;
+			}
+			else { // i-th motion component
+				roi = brects[i];
+				if( roi.area() < 3000 ) // reject very small components
+					continue;
+				color = Scalar(0, 0, 255);
+				magnitude = 30;
+				maski = mhi_mask(roi);
+			}
+			
+			// calculate orientation
+			double angle = calcGlobalOrientation( mhi_orient(roi), maski, mhi(roi), timestamp, MHI_DURATION);
+			angle = 360.0 - angle;  // adjust for images with top-left origin
+			
+			int count = norm( mhi_silh, NORM_L1 ); // calculate number of points within silhouette ROI
+			// check for the case of little motion
+			if( count < roi.area() * 0.15 )
+				continue;
+			
+			char temp[64];
+			sprintf(temp, "Angle:%.2f", angle);
+			
+			// draw a clock with arrow indicating the direction
+			Point center( roi.x + roi.width/2, roi.y + roi.height/2 );
+			circle( dst, center, cvRound(magnitude*1.2), color, 3, CV_AA, 0 );
+			line( dst, center, Point( cvRound( center.x + magnitude*cos(angle*CV_PI/180)),
+															 cvRound( center.y - magnitude*sin(angle*CV_PI/180))), color, 3, CV_AA, 0 );
+			putText( dst, temp, center, FONT_HERSHEY_SIMPLEX, 0.55, color, 2 );
+			
+		}		
+	}
 
   void FrameProcessor::writeProbToCSV(cv::Mat &in_prob_map)
   {

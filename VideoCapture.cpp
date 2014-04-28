@@ -281,7 +281,7 @@ void VideoCapture::setUpImages()
       int64 delta_time = cv::getTickCount() - start_time;
       freq = cv::getTickFrequency();
       fps = freq / delta_time;
-      //std::cout << "FPS: " << fps << std::endl;
+      std::cout << "FPS: " << fps << std::endl;
 
       cvResetImageROI(frame);
 
