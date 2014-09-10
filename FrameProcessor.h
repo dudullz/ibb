@@ -69,13 +69,15 @@ namespace ibb
 		
 		/// now for MHI and its gangs
 		// various tracking parameters (in seconds)
-		const double MHI_DURATION = 1;
-		const double MAX_TIME_DELTA = 0.5;
-		const double MIN_TIME_DELTA = 0.05;
+		const double MHI_DURATION = 5;
+		const double MAX_TIME_DELTA = 5;
+		const double MIN_TIME_DELTA = 1;
 		// number of cyclic frame buffer used for motion detection
 		// (should, probably, depend on FPS)
-		const int N = 4;
+		const int N = 16;
 		
+		double pre_ts;
+		double pre_reset_ts;
 		// ring image buffer
 		std::vector<cv::Mat> mhi_buffer;
 		int mhi_last;
@@ -83,6 +85,7 @@ namespace ibb
 		cv::Mat mhi; // MHI
 		cv::Mat mhi_silh, mhi_orient, mhi_mask, mhi_segmask;
 		cv::Mat motion;
+		cv::Mat trj_history;
 		
   public:
     FrameProcessor();
@@ -116,5 +119,6 @@ namespace ibb
     void loadConfig();
 		
 		void updateMHI( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
+		void updateMHI2( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
   };
 }
