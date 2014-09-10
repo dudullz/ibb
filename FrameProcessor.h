@@ -76,6 +76,8 @@ namespace ibb
 		// (should, probably, depend on FPS)
 		int N;
 		
+		double pre_ts;
+		double pre_reset_ts;
 		// ring image buffer
 		std::vector<cv::Mat> mhi_buffer;
 		int mhi_last;
@@ -83,6 +85,7 @@ namespace ibb
 		cv::Mat mhi; // MHI
 		cv::Mat mhi_silh, mhi_orient, mhi_mask, mhi_segmask;
 		cv::Mat motion;
+		cv::Mat trj_history;
 		
   public:
     FrameProcessor();
@@ -116,5 +119,6 @@ namespace ibb
     void loadConfig();
 		
 		void updateMHI( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
+		void updateMHI2( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
   };
 }

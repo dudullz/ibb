@@ -252,8 +252,16 @@ namespace ibb
 		
 		/// By now we should have the correction positon of the stadning person (through the deteced face
 		/// and/or the upper body detection result)
-//		updateMHI( img_prep, motion, 30 );
-//		imshow( "Motion", motion );
+		cout << "3.   Run MHI Detection" << endl;
+		updateMHI( img_input, motion, 30 );
+		imshow( "Motion", motion );
+		imshow( "Motion History", trj_history );
+		
+//		char rlts[128];
+//		sprintf(rlts, "性别：男（98%）\n年龄：30~35岁 (95%)");
+//		putText( img_prep, rlts, Point(10,20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0,255,0), 2 );
+		
+//		cv::imshow("Pre Processor", img_prep);
 		
 		char rlts[128];
 		sprintf(rlts, "Gender: Male");
@@ -285,11 +293,12 @@ namespace ibb
 	{
 		double timestamp = (double)clock()/CLOCKS_PER_SEC; // get current time in seconds
 		int idx1 = mhi_last, idx2;
-		
-		cvtColor( img, mhi_buffer[mhi_last], CV_BGR2GRAY ); // convert frame to grayscale
-		
 		idx2 = (mhi_last + 1) % N; // index of (last - (N-1))th frame
 		mhi_last = idx2;
+		cvtColor( img, mhi_buffer[mhi_last], CV_BGR2GRAY ); // convert frame to grayscale
+				
+		printf("ts: %.2f\n", timestamp);
+		printf("idx1: %d, idx2: %d\n", idx1, idx2);
 		
 		if( mhi_buffer[idx1].size() != mhi_buffer[idx2].size() )
 			mhi_silh = Mat::ones(img.size(), CV_8U)*255;
@@ -302,7 +311,7 @@ namespace ibb
 		/// make a vertical black stripe to the image
 		/// make sure that the motions on each side are not connected!
 		int height = img.rows;
-		int width = 120;
+		int width = 80;
 		int x = img.cols / 2 - width / 2;
 		int y = 0;
 		
@@ -318,17 +327,26 @@ namespace ibb
 		// convert MHI to blue 8u image
 		mhi.convertTo(mhi_mask, CV_8U, 255./MHI_DURATION,
 									(MHI_DURATION - timestamp)*255./MHI_DURATION);
-		dst = Mat::zeros(mhi_mask.size(), CV_8UC3);
-		insertChannel(mhi_mask, dst, 0);
 		
+		dst = Mat::zeros(mhi_mask.size(), CV_8UC3);
+		if( trj_history.empty() )
+			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
+		if( (timestamp - pre_reset_ts) > 10.0 )
+		{
+			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
+			pre_reset_ts = timestamp;
+		}
+		
+		insertChannel(mhi_mask, dst, 0);
+//		imshow( "mask", mhi_mask );
 		// calculate motion gradient orientation and valid orientation mask
 		calcMotionGradient( mhi, mhi_mask, mhi_orient, MAX_TIME_DELTA, MIN_TIME_DELTA, 3 );
-		
+//		imshow("mhi_orient", mhi_orient);
 		// segment motion: get sequence of motion components
 		// segmask is marked motion components map. It is not used further
 		vector<Rect> brects;
 		segmentMotion(mhi, mhi_segmask, brects, timestamp, MAX_TIME_DELTA );
-		imshow( "segmask", mhi_segmask );
+//		imshow( "segmask", mhi_segmask );
 		
 		// iterate through the motion components,
 		// One more iteration (i == -1) corresponds to the whole image (global motion)
@@ -348,7 +366,8 @@ namespace ibb
 				magnitude = 30;
 				maski = mhi_mask(roi);
 			}
-			
+//			if( i == 0)
+//				imshow("Maski", maski);
 			// calculate orientation
 			double angle = calcGlobalOrientation( mhi_orient(roi), maski, mhi(roi), timestamp, MHI_DURATION);
 			angle = 360.0 - angle;  // adjust for images with top-left origin
@@ -360,17 +379,25 @@ namespace ibb
 			
 			char temp[64];
 			sprintf(temp, "Angle:%.2f", angle);
+			printf("Angle: %s\n", temp);
 			
 			// draw a clock with arrow indicating the direction
 			Point center( roi.x + roi.width/2, roi.y + roi.height/2 );
 			circle( dst, center, cvRound(magnitude*1.2), color, 3, CV_AA, 0 );
 			line( dst, center, Point( cvRound( center.x + magnitude*cos(angle*CV_PI/180)),
 															 cvRound( center.y - magnitude*sin(angle*CV_PI/180))), color, 3, CV_AA, 0 );
+			
+			line( trj_history, center, Point( cvRound( center.x + magnitude*cos(angle*CV_PI/180)),
+															 cvRound( center.y - magnitude*sin(angle*CV_PI/180))), color, 3, CV_AA, 0 );
 			putText( dst, temp, center, FONT_HERSHEY_SIMPLEX, 0.55, color, 2 );
 			
-		}		
+		}
+		
+		double fps = 1 / (timestamp - pre_ts);
+		pre_ts = timestamp;
+		printf("fps: %.2f\n", fps);
 	}
-
+		
   void FrameProcessor::writeProbToCSV(cv::Mat &in_prob_map)
   {
 	  // accept only char type matrices
