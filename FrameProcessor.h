@@ -69,12 +69,12 @@ namespace ibb
 		
 		/// now for MHI and its gangs
 		// various tracking parameters (in seconds)
-		const double MHI_DURATION = 5;
-		const double MAX_TIME_DELTA = 5;
-		const double MIN_TIME_DELTA = 1;
+		double MHI_DURATION;
+		double MAX_TIME_DELTA;
+		double MIN_TIME_DELTA;
 		// number of cyclic frame buffer used for motion detection
 		// (should, probably, depend on FPS)
-		const int N = 16;
+		int N;
 		
 		double pre_ts;
 		double pre_reset_ts;

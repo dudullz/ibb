@@ -10,6 +10,11 @@ namespace ibb
   {
     std::cout << "FrameProcessor()" << std::endl;
 
+	MHI_DURATION = 1;
+	MAX_TIME_DELTA = 0.5;
+	MIN_TIME_DELTA = 0.05;
+	N = 4;
+
     loadConfig();
     saveConfig();
   }
@@ -258,6 +263,29 @@ namespace ibb
 		
 //		cv::imshow("Pre Processor", img_prep);
 		
+		char rlts[128];
+		sprintf(rlts, "Gender: Male");
+		putText( img_prep, rlts, Point(10,20), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,255,0), 2 );
+		sprintf(rlts, "Age: 30-35");
+		putText( img_prep, rlts, Point(10,50), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,255,0), 2 );
+
+		sprintf(rlts, "FPS:10.29");
+		putText( img_prep, rlts, Point(500,30), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,0,255), 5 );
+		putText( img_prep, rlts, Point(500,30), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(255,255,255), 1 );
+
+		int x = img_prep.cols / 3 - 15;
+		Point convex[4];
+		convex[0].x = x;	convex[0].y = 15; 
+		convex[1].x = img_prep.cols - x + 30;	convex[1].y = 15;
+		convex[2].x = img_prep.cols - x + 30;	convex[2].y = 55;
+		convex[3].x = x;	convex[3].y = 55;
+		fillConvexPoly(img_prep, convex, 4, CV_RGB(255,255,255));
+		sprintf(rlts, "Left Arm Lifted");
+		putText( img_prep, rlts, Point(200,45), FONT_HERSHEY_SIMPLEX, 1.00, CV_RGB(255,0,128), 3 );
+					
+		cv::imshow("Pre Processor", img_prep);
+		imwrite("LeftUp.jpg", img_prep);
+
     firstTime = false;
   }
 	
@@ -369,89 +397,7 @@ namespace ibb
 		pre_ts = timestamp;
 		printf("fps: %.2f\n", fps);
 	}
-	
-	// ring image buffer
-	const int N = 16;
-	vector<Mat> buf(N);
-	int last=0;
-
-	void  FrameProcessor::updateMHI2( const Mat& img, Mat& dst, int diff_threshold )
-	{
-		cout << "3.   MHI Version2" << endl;
-		double timestamp = (double)clock()/CLOCKS_PER_SEC; // get current time in seconds
-		int idx1 = last, idx2;
-		Mat silh, orient, mask, segmask;
 		
-		cvtColor( img, buf[last], CV_BGR2GRAY ); // convert frame to grayscale
-		
-		idx2 = (last + 1) % N; // index of (last - (N-1))th frame
-		last = idx2;
-		
-		if( buf[idx1].size() != buf[idx2].size() )
-			silh = Mat::ones(img.size(), CV_8U)*255;
-		else
-			absdiff(buf[idx1], buf[idx2], silh); // get difference between frames
-		
-		threshold( silh, silh, diff_threshold, 1, CV_THRESH_BINARY ); // and threshold it
-		if( mhi.empty() )
-			mhi = Mat::zeros(silh.size(), CV_32F);
-		updateMotionHistory( silh, mhi, timestamp, MHI_DURATION ); // update MHI
-		
-		// convert MHI to blue 8u image
-		mhi.convertTo(mask, CV_8U, 255./MHI_DURATION,
-									(MHI_DURATION - timestamp)*255./MHI_DURATION);
-		dst = Mat::zeros(mask.size(), CV_8UC3);
-		insertChannel(mask, dst, 0);
-		imshow("mask", mask);
-		// calculate motion gradient orientation and valid orientation mask
-		calcMotionGradient( mhi, mask, orient, MAX_TIME_DELTA, MIN_TIME_DELTA, 3 );
-		imshow("mask1", mask);
-		// segment motion: get sequence of motion components
-		// segmask is marked motion components map. It is not used further
-		vector<Rect> brects;
-		segmentMotion(mhi, segmask, brects, timestamp, MAX_TIME_DELTA );
-		imshow( "segmask", segmask );
-		// iterate through the motion components,
-		// One more iteration (i == -1) corresponds to the whole image (global motion)
-		for( int i = -1; i < (int)brects.size(); i++ ) {
-			Rect roi; Scalar color; double magnitude;
-			Mat maski = mask;
-			if( i < 0 ) { // case of the whole image
-				roi = Rect(0, 0, img.cols, img.rows);
-				color = Scalar::all(255);
-				magnitude = 100;
-				
-			}
-			else { // i-th motion component
-				roi = brects[i];
-				if( roi.area() < 3000 ) // reject very small components
-					continue;
-				color = Scalar(0, 0, 255);
-				magnitude = 30;
-				maski = mask(roi);
-			}
-
-			// calculate orientation
-			double angle = calcGlobalOrientation( orient(roi), maski, mhi(roi), timestamp, MHI_DURATION);
-			angle = 360.0 - angle;  // adjust for images with top-left origin
-			
-			int count = norm( silh, NORM_L1 ); // calculate number of points within silhouette ROI
-			// check for the case of little motion
-			if( count < roi.area() * 0.05 )
-				continue;
-			
-			char temp[64];
-			sprintf(temp, "Angle:%.2f", angle);
-			// draw a clock with arrow indicating the direction
-			Point center( roi.x + roi.width/2, roi.y + roi.height/2 );
-			circle( dst, center, cvRound(magnitude*1.2), color, 3, CV_AA, 0 );
-			line( dst, center, Point( cvRound( center.x + magnitude*cos(angle*CV_PI/180)),
-															 cvRound( center.y - magnitude*sin(angle*CV_PI/180))), color, 3, CV_AA, 0 );
-			putText( dst, temp, center, FONT_HERSHEY_SIMPLEX, 0.55, color, 2 );
-			
-		}
-	}
-	
   void FrameProcessor::writeProbToCSV(cv::Mat &in_prob_map)
   {
 	  // accept only char type matrices
