@@ -10,9 +10,9 @@ namespace ibb
   {
     std::cout << "FrameProcessor()" << std::endl;
 
-	MHI_DURATION = 1;
-	MAX_TIME_DELTA = 0.5;
-	MIN_TIME_DELTA = 0.05;
+	MHI_DURATION = 5;
+	MAX_TIME_DELTA = 4;
+	MIN_TIME_DELTA = 1;
 	N = 4;
 
     loadConfig();
