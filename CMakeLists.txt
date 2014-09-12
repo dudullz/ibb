@@ -5,7 +5,9 @@ project(IBBDemo)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CSS_FLAGS} -std=c++11 -stdlib=libc++")
 
-set(BOOST_ROOT "/Users/llz/Packages/boost_1_55_0/")
+# set(BOOST_ROOT "/Users/llz/Packages/boost_1_55_0/")
+set(BOOST_ROOT "D:/dev-packs/boost_1_56_0")
+
 find_package(OpenCV REQUIRED)
 find_package(Boost REQUIRED)
 
