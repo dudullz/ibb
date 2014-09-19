@@ -18,7 +18,7 @@ class DTW
 	unsigned int I, X, Y, n, i, j, k;
 	unsigned int m_seq1_length;
 	unsigned int m_seq2_length;
-	unsigned int m_params;
+	unsigned int m_dims;
 
 	unsigned int debug; /* debug flag */
 
@@ -28,8 +28,11 @@ class DTW
 
 
 public:
-	DTW();
+	DTW( vector< vector<float> >& in_seq1, vector< vector<float> >& in_seq2, int dim );
 	~DTW();
+
+	void ComputeLoaclCostMatrix();
+	void DTWDistance();
 };
 
 #endif	//_DynamicTimeWarping_
