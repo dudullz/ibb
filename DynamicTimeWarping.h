@@ -7,7 +7,7 @@ using namespace std;
 
 class DTW
 {
-	vector< vector<double> >m_globle_dist;
+	vector< vector<double> >m_globle_cost;
 	vector< vector<double> >m_dist;
 
 	double m_top, m_mid, m_bot, m_cheapest, m_total;
@@ -32,7 +32,7 @@ public:
 	~DTW();
 
 	void ComputeLoaclCostMatrix();
-	void DTWDistance();
+	double DTWDistance1Step();
 };
 
 #endif	//_DynamicTimeWarping_
