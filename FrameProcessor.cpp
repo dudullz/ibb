@@ -58,6 +58,9 @@ namespace ibb
 		/// even the face detection and UpperBodyDetector is actually setup after this init()
 		mhi_buffer.resize(N);
 		mhi_last = 0;
+
+		m_left_trajectory.clear();
+		m_right_trajectory.clear();
   }
 	
 	void FrameProcessor::setUpperBodyDetector(std::string ub_model)
@@ -257,38 +260,58 @@ namespace ibb
 		imshow( "Motion", motion );
 		imshow( "Motion History", trj_history );
 		
+		char str_trj[128];
+		sprintf(str_trj, "Left Traj Num:%d", m_left_trajectory.size());
+		putText(img_prep, str_trj, Point(10, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+			
+
+//********************** For Demo Purpose **********************//
+//////////////////////////////////////////////////////////////////
 //		char rlts[128];
 //		sprintf(rlts, "性别：男（98%）\n年龄：30~35岁 (95%)");
 //		putText( img_prep, rlts, Point(10,20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0,255,0), 2 );
 		
 //		cv::imshow("Pre Processor", img_prep);
 		
-		char rlts[128];
-		sprintf(rlts, "Gender: Male");
-		putText( img_prep, rlts, Point(10,20), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,255,0), 2 );
-		sprintf(rlts, "Age: 30-35");
-		putText( img_prep, rlts, Point(10,50), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,255,0), 2 );
+		//char rlts[128];
+		//sprintf(rlts, "Gender: Male");
+		//putText( img_prep, rlts, Point(10,20), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,255,0), 2 );
+		//sprintf(rlts, "Age: 30-35");
+		//putText( img_prep, rlts, Point(10,50), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,255,0), 2 );
 
-		sprintf(rlts, "FPS:10.29");
-		putText( img_prep, rlts, Point(500,30), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,0,255), 5 );
-		putText( img_prep, rlts, Point(500,30), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(255,255,255), 1 );
+		//sprintf(rlts, "FPS:10.29");
+		//putText( img_prep, rlts, Point(500,30), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(0,0,255), 5 );
+		//putText( img_prep, rlts, Point(500,30), FONT_HERSHEY_SIMPLEX, 0.85, CV_RGB(255,255,255), 1 );
 
-		int x = img_prep.cols / 3 - 15;
-		Point convex[4];
-		convex[0].x = x;	convex[0].y = 15; 
-		convex[1].x = img_prep.cols - x + 30;	convex[1].y = 15;
-		convex[2].x = img_prep.cols - x + 30;	convex[2].y = 55;
-		convex[3].x = x;	convex[3].y = 55;
-		fillConvexPoly(img_prep, convex, 4, CV_RGB(255,255,255));
-		sprintf(rlts, "Left Arm Lifted");
-		putText( img_prep, rlts, Point(200,45), FONT_HERSHEY_SIMPLEX, 1.00, CV_RGB(255,0,128), 3 );
-					
+		//int x = img_prep.cols / 3 - 15;
+		//Point convex[4];
+		//convex[0].x = x;	convex[0].y = 15; 
+		//convex[1].x = img_prep.cols - x + 30;	convex[1].y = 15;
+		//convex[2].x = img_prep.cols - x + 30;	convex[2].y = 55;
+		//convex[3].x = x;	convex[3].y = 55;
+		//fillConvexPoly(img_prep, convex, 4, CV_RGB(255,255,255));
+		//sprintf(rlts, "Left Arm Lifted");
+		//putText( img_prep, rlts, Point(200,45), FONT_HERSHEY_SIMPLEX, 1.00, CV_RGB(255,0,128), 3 );
+//////////////////////////////////////////////////////////////////					
+
 		cv::imshow("Pre Processor", img_prep);
 		imwrite("LeftUp.jpg", img_prep);
 
     firstTime = false;
   }
 	
+  void FrameProcessor::ResetTrajectory()
+  {
+	  //vector::clear() does not free memory allocated by the vector to store objects; it calls destructors for the objects it holds.
+	  //The vector has to manage storage internally for the objects it stores.Creating a new vector requires allocating new storage, but clearing & reusing an existing vector allows(but doesn't guarantee) reuse of its already-allocated storage. 
+	  //If you call clear (or a resize with smaller size) on a vector of anything, then all elements from that vector which need to be deleted have their destructors called and their memory is released.
+	  //If you have a vector of vectors, then each inner vector's destructor will clean up its resources properly. When a row-vector or column-vector is destroyed, it cleans up after itself automatically.
+	  //Actual "memory management" is supposed to be abstracted away by std::vector. What's important is that after clear the objects are destroyed and the memory is, well... Not released as in "operator delete", but released as in "it's now available to be reused by new objects in the vector or returned to the operating system", which is whas I tried to say here- indeed imprecisely.
+	  m_left_trajectory.clear();
+	  m_right_trajectory.clear();
+	 
+  }
+
 	void FrameProcessor::updateMHI( const cv::Mat &img, cv::Mat &dst, int diff_threshold)
 	{
 		double timestamp = (double)clock()/CLOCKS_PER_SEC; // get current time in seconds
@@ -334,6 +357,7 @@ namespace ibb
 		if( (timestamp - pre_reset_ts) > 10.0 )
 		{
 			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
+			ResetTrajectory();
 			pre_reset_ts = timestamp;
 		}
 		
@@ -350,6 +374,7 @@ namespace ibb
 		
 		// iterate through the motion components,
 		// One more iteration (i == -1) corresponds to the whole image (global motion)
+		printf("Motion Component Number: %.d\n", brects.size());
 		for( int i = -1; i < (int)brects.size(); i++ ) {
 			Rect roi; Scalar color; double magnitude;
 			Mat maski = mhi_mask;
@@ -371,7 +396,19 @@ namespace ibb
 			// calculate orientation
 			double angle = calcGlobalOrientation( mhi_orient(roi), maski, mhi(roi), timestamp, MHI_DURATION);
 			angle = 360.0 - angle;  // adjust for images with top-left origin
-			
+
+			// starts to log movement direction
+			// just consider 1 dimension for now
+			if (i >= 0)
+			{
+				vector<double> item;
+				item.push_back(angle);
+				if (roi.x < img.cols / 2)
+					m_left_trajectory.push_back(item);
+				else if (roi.x > img.cols / 2)
+					m_right_trajectory.push_back(item);
+			}
+						
 			int count = norm( mhi_silh, NORM_L1 ); // calculate number of points within silhouette ROI
 			// check for the case of little motion
 			if( count < roi.area() * 0.15 )

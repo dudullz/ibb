@@ -18,6 +18,9 @@
 // http://www2.ulg.ac.be/telecom/research/vibe/
 #include "package_bgs/pt/PixelBasedAdaptiveSegmenter.h"
 
+#include <vector>
+using namespace std;
+
 namespace ibb
 {
   class FrameProcessor : public IFrameProcessor
@@ -86,6 +89,13 @@ namespace ibb
 		cv::Mat mhi_silh, mhi_orient, mhi_mask, mhi_segmask;
 		cv::Mat motion;
 		cv::Mat trj_history;
+
+		vector < vector<double> > m_left_trajectory;
+		vector < vector<double> > m_right_trajectory;
+		vector < vector<double> > m_left_lift_to_level;
+		vector < vector<double> > m_right_lift_to_level;
+
+		void ResetTrajectory();
 		
   public:
     FrameProcessor();

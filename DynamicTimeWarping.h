@@ -22,17 +22,19 @@ class DTW
 
 	unsigned int debug; /* debug flag */
 
-	vector< vector<float> > m_seq1, m_seq2; /*now 2 dimensional*/
+	vector< vector<double> > m_seq1, m_seq2; /*now 2 dimensional*/
 
 	FILE *file1, *file2, *glob, *debug_file, *output_file;
 
 
 public:
-	DTW( vector< vector<float> >& in_seq1, vector< vector<float> >& in_seq2, int dim );
+	DTW( vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, int dim );
 	~DTW();
 
 	void ComputeLoaclCostMatrix();
 	double DTWDistance1Step();
+	// same as the above function, but excluding the extreme situation of optimal path being vertical or horizontal line, or edges
+	double DTWDistance1StepNoEdges();
 };
 
 #endif	//_DynamicTimeWarping_
