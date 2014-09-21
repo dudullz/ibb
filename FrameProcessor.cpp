@@ -261,8 +261,11 @@ namespace ibb
 		imshow( "Motion History", trj_history );
 		
 		char str_trj[128];
-		sprintf(str_trj, "Left Traj Num:%d", m_left_trajectory.size());
+		sprintf(str_trj, "Left Traj Num:%ld", m_left_trajectory.size());
 		putText(img_prep, str_trj, Point(10, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+		sprintf(str_trj, "Right Traj Num:%ld", m_right_trajectory.size());
+		int xRight = 2 * img_prep.cols / 3;
+		putText(img_prep, str_trj, Point(xRight, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
 			
 
 //********************** For Demo Purpose **********************//
@@ -374,7 +377,7 @@ namespace ibb
 		
 		// iterate through the motion components,
 		// One more iteration (i == -1) corresponds to the whole image (global motion)
-		printf("Motion Component Number: %.d\n", brects.size());
+		int numTooSmall = 0;
 		for( int i = -1; i < (int)brects.size(); i++ ) {
 			Rect roi; Scalar color; double magnitude;
 			Mat maski = mhi_mask;
@@ -386,11 +389,15 @@ namespace ibb
 			else { // i-th motion component
 				roi = brects[i];
 				if( roi.area() < 3000 ) // reject very small components
+				{
+					numTooSmall++;
 					continue;
+				}
 				color = Scalar(0, 0, 255);
 				magnitude = 30;
 				maski = mhi_mask(roi);
 			}
+			printf("	ROI %d: (%d,%d)-%dx%d-%d\n", i, roi.x, roi.y, roi.width, roi.height, roi.area());
 //			if( i == 0)
 //				imshow("Maski", maski);
 			// calculate orientation
@@ -416,7 +423,8 @@ namespace ibb
 			
 			char temp[64];
 			sprintf(temp, "Angle:%.2f", angle);
-			printf("Angle: %s\n", temp);
+			if (i >= 0)
+				printf("%s, xPos:%d\n", temp, roi.x);
 			
 			// draw a clock with arrow indicating the direction
 			Point center( roi.x + roi.width/2, roi.y + roi.height/2 );
@@ -429,6 +437,7 @@ namespace ibb
 			putText( dst, temp, center, FONT_HERSHEY_SIMPLEX, 0.55, color, 2 );
 			
 		}
+		printf("Motion Component Number: %ld, Too small: %d\n", brects.size(), numTooSmall);
 		
 		double fps = 1 / (timestamp - pre_ts);
 		pre_ts = timestamp;
