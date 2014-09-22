@@ -10,10 +10,10 @@ namespace ibb
   {
     std::cout << "FrameProcessor()" << std::endl;
 
-	MHI_DURATION = 5;
-	MAX_TIME_DELTA = 4;
-	MIN_TIME_DELTA = 1;
-	N = 4;
+	MHI_DURATION = 2;
+	MAX_TIME_DELTA = 0.3;
+	MIN_TIME_DELTA = 0.05;
+	N = 30;
 
     loadConfig();
     saveConfig();
@@ -108,7 +108,7 @@ namespace ibb
 #if defined(_WIN32)
 		sprintf(tmp, "%s\\bin%06d.jpg", savePath.c_str(), frameNumber);		
 #else
-		sprintf(tmp, "%s/bin%06d.jpg", savePath.c_str(), frameNumber);
+		sprintf(tmp, "%s/bin%06ld.jpg", savePath.c_str(), frameNumber);
 #endif
 		saveName = tmp;		
 	}
@@ -119,7 +119,7 @@ namespace ibb
 #if defined(_WIN32)		
 		sprintf(prob, "%s\\prob%06d.jpg", probPath.c_str(), frameNumber);
 #else		
-		sprintf(prob, "%s/prob%06d.jpg", probPath.c_str(), frameNumber);
+		sprintf(prob, "%s/prob%06ld.jpg", probPath.c_str(), frameNumber);
 #endif		
 		probName = prob;
 	}
@@ -130,7 +130,7 @@ namespace ibb
 #if defined(_WIN32)		
 		sprintf(csv, "%s\\%d.csv", csvPath.c_str(), frameNumber);
 #else		
-		sprintf(csv, "%s/%d.csv", csvPath.c_str(), frameNumber);
+		sprintf(csv, "%s/%ld.csv", csvPath.c_str(), frameNumber);
 #endif		
 		csvName = csv;
 	}
@@ -258,7 +258,7 @@ namespace ibb
 		cout << "3.   Run MHI Detection" << endl;
 		updateMHI( img_input, motion, 30 );
 		imshow( "Motion", motion );
-		imshow( "Motion History", trj_history );
+//		imshow( "Motion History", trj_history );
 		
 		char str_trj[128];
 		sprintf(str_trj, "Left Traj Num:%ld", m_left_trajectory.size());
@@ -349,6 +349,7 @@ namespace ibb
 		if( mhi.empty() )
 			mhi = Mat::zeros(mhi_silh.size(), CV_32F);
 		updateMotionHistory( mhi_silh, mhi, timestamp, MHI_DURATION ); // update MHI
+//		imshow("mhi", mhi);
 		
 		// convert MHI to blue 8u image
 		mhi.convertTo(mhi_mask, CV_8U, 255./MHI_DURATION,
@@ -357,7 +358,7 @@ namespace ibb
 		dst = Mat::zeros(mhi_mask.size(), CV_8UC3);
 		if( trj_history.empty() )
 			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
-		if( (timestamp - pre_reset_ts) > 10.0 )
+		if( (timestamp - pre_reset_ts) > 100.0 )
 		{
 			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
 			ResetTrajectory();
@@ -368,12 +369,15 @@ namespace ibb
 //		imshow( "mask", mhi_mask );
 		// calculate motion gradient orientation and valid orientation mask
 		calcMotionGradient( mhi, mhi_mask, mhi_orient, MAX_TIME_DELTA, MIN_TIME_DELTA, 3 );
-//		imshow("mhi_orient", mhi_orient);
+//		imshow("mhi_orient", mhi_mask);
 		// segment motion: get sequence of motion components
 		// segmask is marked motion components map. It is not used further
 		vector<Rect> brects;
 		segmentMotion(mhi, mhi_segmask, brects, timestamp, MAX_TIME_DELTA );
-//		imshow( "segmask", mhi_segmask );
+		
+		/// NOTE: there seems to be a bug in mhi_segmask where
+		/// after a little while it will be cleared!!!
+		imshow( "segmask", mhi_segmask );
 		
 		// iterate through the motion components,
 		// One more iteration (i == -1) corresponds to the whole image (global motion)
@@ -403,7 +407,12 @@ namespace ibb
 			// calculate orientation
 			double angle = calcGlobalOrientation( mhi_orient(roi), maski, mhi(roi), timestamp, MHI_DURATION);
 			angle = 360.0 - angle;  // adjust for images with top-left origin
-
+						
+			int count = norm( mhi_silh, NORM_L1 ); // calculate number of points within silhouette ROI
+			// check for the case of little motion
+			if( count < roi.area() * 0.05 )
+				continue;
+			
 			// starts to log movement direction
 			// just consider 1 dimension for now
 			if (i >= 0)
@@ -415,11 +424,6 @@ namespace ibb
 				else if (roi.x > img.cols / 2)
 					m_right_trajectory.push_back(item);
 			}
-						
-			int count = norm( mhi_silh, NORM_L1 ); // calculate number of points within silhouette ROI
-			// check for the case of little motion
-			if( count < roi.area() * 0.15 )
-				continue;
 			
 			char temp[64];
 			sprintf(temp, "Angle:%.2f", angle);
