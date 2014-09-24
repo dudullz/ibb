@@ -18,6 +18,8 @@
 // http://www2.ulg.ac.be/telecom/research/vibe/
 #include "package_bgs/pt/PixelBasedAdaptiveSegmenter.h"
 
+#include "DynamicTimeWarping.h"
+
 #include <vector>
 using namespace std;
 
@@ -92,10 +94,13 @@ namespace ibb
 
 		vector < vector<double> > m_left_trajectory;
 		vector < vector<double> > m_right_trajectory;
-		vector < vector<double> > m_left_lift_to_level;
-		vector < vector<double> > m_right_lift_to_level;
+		vector < vector<double> > m_model_lift_to_level_left;
+		vector < vector<double> > m_model_lift_to_level_right;
 
 		void ResetTrajectory();
+
+		DTW m_dtw_left;
+		DTW m_dtw_right;
 		
   public:
     FrameProcessor();
@@ -127,6 +132,8 @@ namespace ibb
 
     void saveConfig();
     void loadConfig();
+	void loadModelLeftHandUp();
+	void loadModelRightHandUp();
 		
 		void updateMHI( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
 		void updateMHI2( const cv::Mat& img, cv::Mat& dst, int diff_threshold );

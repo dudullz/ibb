@@ -1,6 +1,7 @@
 
 #include "FrameProcessor.h"
 #include <fstream>
+#include <string>
 using namespace std;
 using namespace cv;
 
@@ -17,6 +18,9 @@ namespace ibb
 
     loadConfig();
     saveConfig();
+
+	loadModelLeftHandUp();
+	loadModelRightHandUp();
   }
 
   FrameProcessor::~FrameProcessor()
@@ -258,15 +262,7 @@ namespace ibb
 		cout << "3.   Run MHI Detection" << endl;
 		updateMHI( img_input, motion, 30 );
 		imshow( "Motion", motion );
-//		imshow( "Motion History", trj_history );
-		
-		char str_trj[128];
-		sprintf(str_trj, "Left Traj Num:%ld", m_left_trajectory.size());
-		putText(img_prep, str_trj, Point(10, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-		sprintf(str_trj, "Right Traj Num:%ld", m_right_trajectory.size());
-		int xRight = 2 * img_prep.cols / 3;
-		putText(img_prep, str_trj, Point(xRight, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-			
+//		imshow( "Motion History", trj_history );					
 
 //********************** For Demo Purpose **********************//
 //////////////////////////////////////////////////////////////////
@@ -296,9 +292,114 @@ namespace ibb
 		//sprintf(rlts, "Left Arm Lifted");
 		//putText( img_prep, rlts, Point(200,45), FONT_HERSHEY_SIMPLEX, 1.00, CV_RGB(255,0,128), 3 );
 //////////////////////////////////////////////////////////////////					
+						
+		double lscore = -1, rscore = -1;
+		char str_trj[128];
+		sprintf(str_trj, "Left Traj Num:%ld", m_left_trajectory.size());
+		putText(img_prep, str_trj, Point(10, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+		sprintf(str_trj, "Prob: %.2f", lscore);
+		putText(img_prep, str_trj, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+
+		sprintf(str_trj, "Right Traj Num:%ld", m_right_trajectory.size());
+		int xRight = 2 * img_prep.cols / 3;
+		putText(img_prep, str_trj, Point(xRight, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+		sprintf(str_trj, "Prob: %.2f", rscore);
+		putText(img_prep, str_trj, Point(xRight, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
 
 		cv::imshow("Pre Processor", img_prep);
-		imwrite("LeftUp.jpg", img_prep);
+
+		cout << "Left Model: " << m_model_lift_to_level_left.size() << endl;		
+		cout << "Left Trajectory: " << m_left_trajectory.size() << endl;
+		cout << "Right Model: " << m_model_lift_to_level_right.size() << endl;
+		cout << "Right Trajectory: " << m_right_trajectory.size() << endl;
+
+		char k;
+		k = waitKey(0);
+		if (k == 'q')
+			exit(1);
+		if (k == 'c')
+		{
+			cout << "	@@@@@@@@@@@ Trajecotry Cleared @@@@@@@@@@@" << endl;
+			ResetTrajectory();
+		}
+			
+		if (k == 'l')
+		{
+			cout << "	@@@@@@@@@@@ Save Left Model @@@@@@@@@@@" << endl;
+			std::ofstream csv;
+			csv.open("LeftUp.model", std::ofstream::out | std::ofstream::trunc);
+			
+			int llen = m_left_trajectory.size();
+			int dim = m_left_trajectory[0].size();
+			
+			csv << llen << " " << dim << endl;
+			for (int i = 0; i < llen; ++i)
+			{
+				if (dim == 1)
+					csv << m_left_trajectory[i][0];
+				else
+				{
+					for (int d = 0; d < dim; ++d)
+					{
+						if (d != (dim - 1))
+							csv << m_left_trajectory[i][d] << ",";
+						else
+							csv << m_left_trajectory[i][d];
+					}
+				}
+				csv << "\n";
+			}
+			csv.close();		
+
+			m_model_lift_to_level_left = m_left_trajectory;
+		}
+
+		if (k == 'r')
+		{
+			cout << "	@@@@@@@@@@@ Save Right Model @@@@@@@@@@@" << endl;
+			std::ofstream csv;
+			csv.open("RightUp.model", std::ofstream::out | std::ofstream::trunc);
+
+			int rlen = m_right_trajectory.size();
+			int dim = m_right_trajectory[0].size();
+			
+			csv << rlen << " " << dim << endl;
+			for (int i = 0; i < rlen; ++i)
+			{
+				if (dim == 1)
+					csv << m_right_trajectory[i][0];
+				else
+				{
+					for (int d = 0; d < dim; ++d)
+					{
+						if (d != (dim - 1))
+							csv << m_right_trajectory[i][d] << ",";
+						else
+							csv << m_right_trajectory[i][d];
+					}
+				}
+				csv << "\n";
+			}
+			csv.close();
+
+			m_model_lift_to_level_right = m_right_trajectory;
+		}
+				
+		if (k == 'v')
+		{
+			cout << "Calculate Probability: " << endl;
+			//int ldim = m_left_trajectory[0].size();
+			//m_dtw_left.Initialise(m_model_lift_to_level_left, m_left_trajectory, ldim);
+			//m_dtw_left.ComputeLoaclCostMatrix();
+			//lscore = m_dtw_left.DTWDistance1Step();
+			//cout << "Left Hand Up Probability: " << lscore << endl;
+
+			int rdim = m_right_trajectory[0].size();
+			m_dtw_right.Initialise(m_model_lift_to_level_right, m_right_trajectory, rdim);
+			m_dtw_right.ComputeLoaclCostMatrix();
+			rscore = m_dtw_right.DTWDistance1Step();
+			cout << "	>>>  Right Hand Up Probability: " << rscore << endl;
+		}
 
     firstTime = false;
   }
@@ -358,7 +459,7 @@ namespace ibb
 		dst = Mat::zeros(mhi_mask.size(), CV_8UC3);
 		if( trj_history.empty() )
 			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
-		if( (timestamp - pre_reset_ts) > 100.0 )
+		if( (timestamp - pre_reset_ts) > 1000.0 )
 		{
 			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
 			ResetTrajectory();
@@ -369,7 +470,7 @@ namespace ibb
 //		imshow( "mask", mhi_mask );
 		// calculate motion gradient orientation and valid orientation mask
 		calcMotionGradient( mhi, mhi_mask, mhi_orient, MAX_TIME_DELTA, MIN_TIME_DELTA, 3 );
-//		imshow("mhi_orient", mhi_mask);
+		imshow("mhi_orient", mhi_mask);
 		// segment motion: get sequence of motion components
 		// segmask is marked motion components map. It is not used further
 		vector<Rect> brects;
@@ -597,4 +698,131 @@ namespace ibb
 
     cvReleaseFileStorage(&fs);
   }
+
+  void FrameProcessor::loadModelLeftHandUp()
+  {
+	  cout << "Load Left Hand Model" << endl;
+	  std::ifstream file;
+	  file.open("LeftUp.model", std::ofstream::in);
+	  string line;
+	  //while (getline(file, line))
+		 // cout << line << endl;
+
+	  double a = -1;
+	  while (!file.eof())
+	  {
+		  file >> a;
+		  cout << a << endl;
+	  }
+
+	  file.close();
+	  file.open("LeftUp.model", std::ofstream::in);
+	  //file.seekg(0, file.beg);
+	  int count = 0;
+	  int length = -1, dims = -1;
+	  double value;
+	  while (!file.eof())
+	  {
+		  if (count == 0)
+		  {
+			  file >> length;
+			  
+			  cout << "Length: " << length << endl;
+		  }
+		  else if (count == 1)
+		  {
+			  file >> dims;
+			  if (dims > 1)
+			  {
+				  for (int i = 0; i < length; ++i)
+				  {
+					  m_model_lift_to_level_left[i].assign(dims, 0.0);
+				  }
+			  }
+			  cout << "Dim: " << dims << endl;
+		  }
+		  else{
+			  file >> value;
+			  cout << "value: " << value << endl;
+			  vector<double> item;
+			  item.push_back(value);
+			  m_model_lift_to_level_left.push_back(item);
+		  }
+
+		  count++;
+	  }
+	  m_model_lift_to_level_left.erase(m_model_lift_to_level_left.end()-1);
+	  cout << "Verify length: " << m_model_lift_to_level_left.size() << endl;	  
+	  for (int i = 0; i < m_model_lift_to_level_left.size(); ++i)
+		  cout << i + 1 << ":	" << m_model_lift_to_level_left[i][0] << endl;
+
+	  getchar();
+
+	  file.close();
+  }
+
+  void FrameProcessor::loadModelRightHandUp()
+  {
+	  cout << "Load Right Hand Model" << endl;
+	  std::ifstream file;
+	  file.open("RightUp.model", std::ofstream::in);
+	  string line;
+	  //while (getline(file, line))
+	  // cout << line << endl;
+
+	  double a = -1;
+	  while (!file.eof())
+	  {
+		  file >> a;
+		  cout << a << endl;
+	  }
+
+	  file.close();
+	  file.open("RightUp.model", std::ofstream::in);
+	  //file.seekg(0, file.beg);
+	  int count = 0;
+	  int length = -1, dims = -1;
+	  double value;
+	  while (!file.eof())
+	  {
+		  if (count == 0)
+		  {
+			  file >> length;
+
+			  cout << "Length: " << length << endl;
+		  }
+		  else if (count == 1)
+		  {
+			  file >> dims;
+			  if (dims > 1)
+			  {
+				  for (int i = 0; i < length; ++i)
+				  {
+					  m_model_lift_to_level_right[i].assign(dims, 0.0);
+				  }
+			  }
+			  cout << "Dim: " << dims << endl;
+		  }
+		  else{
+			  file >> value;
+			  cout << "value: " << value << endl;
+			  vector<double> item;
+			  item.push_back(value);
+			  m_model_lift_to_level_right.push_back(item);
+		  }
+
+		  count++;
+	  }
+	  m_model_lift_to_level_right.erase(m_model_lift_to_level_right.end() - 1);
+	  cout << "Verify length: " << m_model_lift_to_level_right.size() << endl;
+	  for (int i = 0; i < m_model_lift_to_level_right.size(); ++i)
+		  cout << i + 1 << ":	" << m_model_lift_to_level_right[i][0] << endl;
+
+	  getchar();
+
+	  file.close();
+  }
 }
+
+
+ 

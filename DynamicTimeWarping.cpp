@@ -1,15 +1,31 @@
 #include "DynamicTimeWarping.h"
+#include <vector>
+#include <iostream>
 
 #define VERY_BIG  (1e30)
 #define MIN(a,b) (a<b?a:b)  
 
+using namespace std;
+
+DTW::DTW()
+{
+	m_seq1_length = m_seq2_length = m_dims = -1;
+}
+
 DTW::DTW(vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, int in_dim )
 {
+	Initialise(in_seq1, in_seq2, in_dim);
+}
+
+void DTW::Initialise(vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, int dim)
+{
+	cout << "	[DTW::Initialise] " << endl;
+
 	m_seq1_length = in_seq1.size();
 	m_seq2_length = in_seq2.size();
-	m_dims = in_dim;
+	m_dims = dim;
 
-	m_dist.resize( m_seq1_length );
+	m_dist.resize(m_seq1_length);
 	for (int i = 0; i < m_seq1_length; ++i)
 		m_dist[i].assign(m_seq2_length, 0.0);
 
@@ -19,8 +35,18 @@ DTW::DTW(vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, i
 
 	m_seq1 = in_seq1;
 	m_seq2 = in_seq2;
-}
 
+	cout << "1st Seq:" << m_seq1_length << endl;
+	cout << "2nd Seq:" << m_seq1_length << endl;
+	cout << "Dim:" << m_dims << endl;
+
+	cout << "	=== Sequence 1 ===" << endl;
+	for (int i = 0; i < m_seq1_length; ++i)
+		cout << m_seq1[i][0] << endl;
+	cout << "	=== Sequence 2 ===" << endl;
+	for (int i = 0; i < m_seq2_length; ++i)
+		cout << m_seq2[i][0] << endl;
+}
 
 DTW::~DTW()
 {

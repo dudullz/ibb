@@ -28,9 +28,11 @@ class DTW
 
 
 public:
+	DTW();
 	DTW( vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, int dim );
 	~DTW();
 
+	void Initialise(vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, int dim);
 	void ComputeLoaclCostMatrix();
 	double DTWDistance1Step();
 	// same as the above function, but excluding the extreme situation of optimal path being vertical or horizontal line, or edges
