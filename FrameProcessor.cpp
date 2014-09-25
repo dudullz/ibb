@@ -18,9 +18,13 @@ namespace ibb
 
     loadConfig();
     saveConfig();
-
+#ifdef __APPLE__
+		loadModelLeftHandUpCLib();
+		loadModelRightHandUpCLib();
+#else
 	loadModelLeftHandUp();
 	loadModelRightHandUp();
+#endif
   }
 
   FrameProcessor::~FrameProcessor()
@@ -701,20 +705,42 @@ namespace ibb
 
   void FrameProcessor::loadModelLeftHandUp()
   {
-	  cout << "Load Left Hand Model" << endl;
+	  cout << "Load Left Hand Model " << endl;
 	  std::ifstream file;
-	  file.open("LeftUp.model", std::ofstream::in);
+	  file.open("/Users/llz/Developer/OpenCV2.4/IBB_Demo/build/Release/cc.txt", std::ifstream::in);
+		
+//		cout << "3" << endl;
+//		if (file.good())
+//		{
+//			cout << "The file not good" << endl;
+//			exit(-1);
+//		}
+//		
+//		cout << "1" << endl;
+//		if (file.fail())
+//		{
+//			cout << "The file doesn't exist" << endl;
+//			exit(-1);
+//		}		
+//		
+//		cout << "2" << endl;
+//		if (file.is_open())
+//		{
+//			cout << "Error opening the file" << endl;
+//			exit(-1);
+//		}
+		
 	  string line;
-	  //while (getline(file, line))
-		 // cout << line << endl;
+	  while (getline(file, line))
+			cout << line << endl;
 
-	  double a = -1;
-	  while (!file.eof())
-	  {
-		  file >> a;
-		  cout << a << endl;
-	  }
-
+	  double a = -1.0;
+//	  while (!file.eof())
+//	  {
+//		  file >> a;
+//		  cout << a << endl;
+//	  }
+		getchar();
 	  file.close();
 	  file.open("LeftUp.model", std::ofstream::in);
 	  //file.seekg(0, file.beg);
@@ -765,7 +791,7 @@ namespace ibb
   {
 	  cout << "Load Right Hand Model" << endl;
 	  std::ifstream file;
-	  file.open("RightUp.model", std::ofstream::in);
+	  file.open("RightUp.model", std::ifstream::in);
 	  string line;
 	  //while (getline(file, line))
 	  // cout << line << endl;
@@ -776,7 +802,7 @@ namespace ibb
 		  file >> a;
 		  cout << a << endl;
 	  }
-
+		getchar();
 	  file.close();
 	  file.open("RightUp.model", std::ofstream::in);
 	  //file.seekg(0, file.beg);
@@ -822,6 +848,39 @@ namespace ibb
 
 	  file.close();
   }
+	
+	void FrameProcessor::loadModelLeftHandUpCLib()
+	{
+		FILE *ifp;
+		ifp = fopen("LeftUp.model", "r");
+		
+		if (ifp == NULL) {
+			fprintf(stderr, "Can't open input file in.list!\n");
+			exit(1);
+		}
+		
+		int length = -1, dims = -1;
+		fscanf(ifp, "%d %d", &length, &dims);
+		cout << "Read in Length:" << length << ", Dim:" << dims << endl;
+		
+		double value = -1.0;
+		while ( !feof(ifp) )
+		{
+			if (fscanf(ifp, "%lf", &value) != 1)
+				break;
+			cout << value << endl;
+			vector<double> item;
+			item.push_back(value);
+			m_model_lift_to_level_right.push_back(item);
+		}
+		cout << "Verify length: " << m_model_lift_to_level_right.size() << endl;
+		
+	}
+	
+	void FrameProcessor::loadModelRightHandUpCLib()
+	{
+		
+	}
 }
 
 

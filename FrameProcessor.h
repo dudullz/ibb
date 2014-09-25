@@ -132,8 +132,10 @@ namespace ibb
 
     void saveConfig();
     void loadConfig();
-	void loadModelLeftHandUp();
-	void loadModelRightHandUp();
+		void loadModelLeftHandUp();
+		void loadModelRightHandUp();
+		void loadModelLeftHandUpCLib();
+		void loadModelRightHandUpCLib();
 		
 		void updateMHI( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
 		void updateMHI2( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
