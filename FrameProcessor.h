@@ -92,10 +92,10 @@ namespace ibb
 		cv::Mat motion;
 		cv::Mat trj_history;
 
-		vector < vector<double> > m_left_trajectory;
-		vector < vector<double> > m_right_trajectory;
-		vector < vector<double> > m_model_lift_to_level_left;
-		vector < vector<double> > m_model_lift_to_level_right;
+		vector < vector<double> > m_lefthand_trajectory;
+		vector < vector<double> > m_righthand_trajectory;
+		vector < vector<double> > m_model_lefthand_down_to_middle;
+		vector < vector<double> > m_model_righthand_down_to_middle;
 
 		void ResetTrajectory();
 

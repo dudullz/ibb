@@ -67,8 +67,8 @@ namespace ibb
 		mhi_buffer.resize(N);
 		mhi_last = 0;
 
-		m_left_trajectory.clear();
-		m_right_trajectory.clear();
+		m_lefthand_trajectory.clear();
+		m_righthand_trajectory.clear();
   }
 	
 	void FrameProcessor::setUpperBodyDetector(std::string ub_model)
@@ -107,8 +107,8 @@ namespace ibb
 
   void FrameProcessor::process(const cv::Mat &img_input)
   {
-	  std::cout << " [FrameProcessor::process(const cv::Mat &img_input)] " << std::endl;	
-    frameNumber++;
+	  frameNumber++;
+	  std::cout << " [FrameProcessor::process(...)] at Frame " << frameNumber << std::endl;	    
 	
 	if(savePath.length() > 0)
 	{
@@ -299,12 +299,12 @@ namespace ibb
 						
 		double lscore = -1, rscore = -1;
 		char str_trj[128];
-		sprintf(str_trj, "Left Traj Num:%ld", m_left_trajectory.size());
+		sprintf(str_trj, "Left Traj Num:%ld", m_lefthand_trajectory.size());
 		putText(img_prep, str_trj, Point(10, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
 		sprintf(str_trj, "Prob: %.2f", lscore);
 		putText(img_prep, str_trj, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
 
-		sprintf(str_trj, "Right Traj Num:%ld", m_right_trajectory.size());
+		sprintf(str_trj, "Right Traj Num:%ld", m_righthand_trajectory.size());
 		int xRight = 2 * img_prep.cols / 3;
 		putText(img_prep, str_trj, Point(xRight, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
 		sprintf(str_trj, "Prob: %.2f", rscore);
@@ -312,10 +312,10 @@ namespace ibb
 
 		cv::imshow("Pre Processor", img_prep);
 
-		cout << "Left Model: " << m_model_lift_to_level_left.size() << endl;		
-		cout << "Left Trajectory: " << m_left_trajectory.size() << endl;
-		cout << "Right Model: " << m_model_lift_to_level_right.size() << endl;
-		cout << "Right Trajectory: " << m_right_trajectory.size() << endl;
+		cout << "Left Model: " << m_model_lefthand_down_to_middle.size() << endl;		
+		cout << "Left Trajectory: " << m_lefthand_trajectory.size() << endl;
+		cout << "Right Model: " << m_model_righthand_down_to_middle.size() << endl;
+		cout << "Right Trajectory: " << m_righthand_trajectory.size() << endl;
 
 		char k;
 		k = waitKey(0);
@@ -323,7 +323,7 @@ namespace ibb
 			exit(1);
 		if (k == 'c')
 		{
-			cout << "	@@@@@@@@@@@ Trajecotry Cleared @@@@@@@@@@@" << endl;
+			cout << "	>>>>>>>>>> Trajecotry Cleared <<<<<<<<<<" << endl;
 			ResetTrajectory();
 		}
 			
@@ -333,29 +333,29 @@ namespace ibb
 			std::ofstream csv;
 			csv.open("LeftUp.model", std::ofstream::out | std::ofstream::trunc);
 			
-			int llen = m_left_trajectory.size();
-			int dim = m_left_trajectory[0].size();
+			int llen = m_lefthand_trajectory.size();
+			int dim = m_lefthand_trajectory[0].size();
 			
 			csv << llen << " " << dim << endl;
 			for (int i = 0; i < llen; ++i)
 			{
 				if (dim == 1)
-					csv << m_left_trajectory[i][0];
+					csv << m_lefthand_trajectory[i][0];
 				else
 				{
 					for (int d = 0; d < dim; ++d)
 					{
 						if (d != (dim - 1))
-							csv << m_left_trajectory[i][d] << ",";
+							csv << m_lefthand_trajectory[i][d] << ",";
 						else
-							csv << m_left_trajectory[i][d];
+							csv << m_lefthand_trajectory[i][d];
 					}
 				}
 				csv << "\n";
 			}
 			csv.close();		
 
-			m_model_lift_to_level_left = m_left_trajectory;
+			m_model_lefthand_down_to_middle = m_lefthand_trajectory;
 		}
 
 		if (k == 'r')
@@ -364,45 +364,56 @@ namespace ibb
 			std::ofstream csv;
 			csv.open("RightUp.model", std::ofstream::out | std::ofstream::trunc);
 
-			int rlen = m_right_trajectory.size();
-			int dim = m_right_trajectory[0].size();
+			int rlen = m_righthand_trajectory.size();
+			int dim = m_righthand_trajectory[0].size();
 			
 			csv << rlen << " " << dim << endl;
 			for (int i = 0; i < rlen; ++i)
 			{
 				if (dim == 1)
-					csv << m_right_trajectory[i][0];
+					csv << m_righthand_trajectory[i][0];
 				else
 				{
 					for (int d = 0; d < dim; ++d)
 					{
 						if (d != (dim - 1))
-							csv << m_right_trajectory[i][d] << ",";
+							csv << m_righthand_trajectory[i][d] << ",";
 						else
-							csv << m_right_trajectory[i][d];
+							csv << m_righthand_trajectory[i][d];
 					}
 				}
 				csv << "\n";
 			}
 			csv.close();
 
-			m_model_lift_to_level_right = m_right_trajectory;
+			m_model_righthand_down_to_middle = m_righthand_trajectory;
 		}
 				
 		if (k == 'v')
 		{
 			cout << "Calculate Probability: " << endl;
-			//int ldim = m_left_trajectory[0].size();
-			//m_dtw_left.Initialise(m_model_lift_to_level_left, m_left_trajectory, ldim);
+			//int ldim = m_lefthand_trajectory[0].size();
+			//m_dtw_left.Initialise(m_model_lefthand_down_to_middle, m_lefthand_trajectory, ldim);
 			//m_dtw_left.ComputeLoaclCostMatrix();
 			//lscore = m_dtw_left.DTWDistance1Step();
 			//cout << "Left Hand Up Probability: " << lscore << endl;
 
-			int rdim = m_right_trajectory[0].size();
-			m_dtw_right.Initialise(m_model_lift_to_level_right, m_right_trajectory, rdim);
+			int rdim = m_righthand_trajectory[0].size();
+			cout << m_model_righthand_down_to_middle.size() << " VS " << m_righthand_trajectory.size() << endl;
+			m_dtw_right.Initialise(m_model_righthand_down_to_middle, m_righthand_trajectory, rdim);
 			m_dtw_right.ComputeLoaclCostMatrix();
 			rscore = m_dtw_right.DTWDistance1Step();
 			cout << "	>>>  Right Hand Up Probability: " << rscore << endl;
+		}
+
+		if (k == 'a')
+		{
+			cout << "Calculate Probability: " << endl;
+			int ldim = m_lefthand_trajectory[0].size();
+			m_dtw_left.Initialise(m_model_lefthand_down_to_middle, m_lefthand_trajectory, ldim);
+			m_dtw_left.ComputeLoaclCostMatrix();
+			lscore = m_dtw_left.DTWDistance1Step();
+			cout << "Left Hand Up Probability: " << lscore << endl;
 		}
 
     firstTime = false;
@@ -415,8 +426,8 @@ namespace ibb
 	  //If you call clear (or a resize with smaller size) on a vector of anything, then all elements from that vector which need to be deleted have their destructors called and their memory is released.
 	  //If you have a vector of vectors, then each inner vector's destructor will clean up its resources properly. When a row-vector or column-vector is destroyed, it cleans up after itself automatically.
 	  //Actual "memory management" is supposed to be abstracted away by std::vector. What's important is that after clear the objects are destroyed and the memory is, well... Not released as in "operator delete", but released as in "it's now available to be reused by new objects in the vector or returned to the operating system", which is whas I tried to say here- indeed imprecisely.
-	  m_left_trajectory.clear();
-	  m_right_trajectory.clear();
+	  m_lefthand_trajectory.clear();
+	  m_righthand_trajectory.clear();
 	 
   }
 
@@ -525,9 +536,9 @@ namespace ibb
 				vector<double> item;
 				item.push_back(angle);
 				if (roi.x < img.cols / 2)
-					m_left_trajectory.push_back(item);
+					m_lefthand_trajectory.push_back(item);
 				else if (roi.x > img.cols / 2)
-					m_right_trajectory.push_back(item);
+					m_righthand_trajectory.push_back(item);
 			}
 			
 			char temp[64];
@@ -707,7 +718,8 @@ namespace ibb
   {
 	  cout << "Load Left Hand Model " << endl;
 	  std::ifstream file;
-	  file.open("/Users/llz/Developer/OpenCV2.4/IBB_Demo/build/Release/cc.txt", std::ifstream::in);
+
+	  file.open("LeftUp.model", std::ifstream::in);
 		
 //		cout << "3" << endl;
 //		if (file.good())
@@ -742,7 +754,7 @@ namespace ibb
 //	  }
 		getchar();
 	  file.close();
-	  file.open("LeftUp.model", std::ofstream::in);
+	  file.open("LeftUp.model", std::ifstream::in);
 	  //file.seekg(0, file.beg);
 	  int count = 0;
 	  int length = -1, dims = -1;
@@ -762,7 +774,7 @@ namespace ibb
 			  {
 				  for (int i = 0; i < length; ++i)
 				  {
-					  m_model_lift_to_level_left[i].assign(dims, 0.0);
+					  m_model_lefthand_down_to_middle[i].assign(dims, 0.0);
 				  }
 			  }
 			  cout << "Dim: " << dims << endl;
@@ -772,15 +784,15 @@ namespace ibb
 			  cout << "value: " << value << endl;
 			  vector<double> item;
 			  item.push_back(value);
-			  m_model_lift_to_level_left.push_back(item);
+			  m_model_lefthand_down_to_middle.push_back(item);
 		  }
 
 		  count++;
 	  }
-	  m_model_lift_to_level_left.erase(m_model_lift_to_level_left.end()-1);
-	  cout << "Verify length: " << m_model_lift_to_level_left.size() << endl;	  
-	  for (int i = 0; i < m_model_lift_to_level_left.size(); ++i)
-		  cout << i + 1 << ":	" << m_model_lift_to_level_left[i][0] << endl;
+	  m_model_lefthand_down_to_middle.erase(m_model_lefthand_down_to_middle.end()-1);
+	  cout << "Verify length: " << m_model_lefthand_down_to_middle.size() << endl;	  
+	  for (int i = 0; i < m_model_lefthand_down_to_middle.size(); ++i)
+		  cout << i + 1 << ":	" << m_model_lefthand_down_to_middle[i][0] << endl;
 
 	  getchar();
 
@@ -804,7 +816,7 @@ namespace ibb
 	  }
 		getchar();
 	  file.close();
-	  file.open("RightUp.model", std::ofstream::in);
+	  file.open("RightUp.model", std::ifstream::in);
 	  //file.seekg(0, file.beg);
 	  int count = 0;
 	  int length = -1, dims = -1;
@@ -824,7 +836,7 @@ namespace ibb
 			  {
 				  for (int i = 0; i < length; ++i)
 				  {
-					  m_model_lift_to_level_right[i].assign(dims, 0.0);
+					  m_model_righthand_down_to_middle[i].assign(dims, 0.0);
 				  }
 			  }
 			  cout << "Dim: " << dims << endl;
@@ -834,15 +846,15 @@ namespace ibb
 			  cout << "value: " << value << endl;
 			  vector<double> item;
 			  item.push_back(value);
-			  m_model_lift_to_level_right.push_back(item);
+			  m_model_righthand_down_to_middle.push_back(item);
 		  }
 
 		  count++;
 	  }
-	  m_model_lift_to_level_right.erase(m_model_lift_to_level_right.end() - 1);
-	  cout << "Verify length: " << m_model_lift_to_level_right.size() << endl;
-	  for (int i = 0; i < m_model_lift_to_level_right.size(); ++i)
-		  cout << i + 1 << ":	" << m_model_lift_to_level_right[i][0] << endl;
+	  m_model_righthand_down_to_middle.erase(m_model_righthand_down_to_middle.end() - 1);
+	  cout << "Verify length: " << m_model_righthand_down_to_middle.size() << endl;
+	  for (int i = 0; i < m_model_righthand_down_to_middle.size(); ++i)
+		  cout << i + 1 << ":	" << m_model_righthand_down_to_middle[i][0] << endl;
 
 	  getchar();
 
@@ -874,6 +886,8 @@ namespace ibb
 			m_model_lift_to_level_right.push_back(item);
 		}
 		cout << "Verify length: " << m_model_lift_to_level_right.size() << endl;
+		
+		fclose(ifp);
 		
 	}
 	
