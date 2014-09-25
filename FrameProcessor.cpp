@@ -742,16 +742,16 @@ namespace ibb
 //			exit(-1);
 //		}
 		
-	  string line;
-	  while (getline(file, line))
-			cout << line << endl;
+//	  string line;
+//	  while (getline(file, line))
+//			cout << line << endl;
 
 	  double a = -1.0;
-//	  while (!file.eof())
-//	  {
-//		  file >> a;
-//		  cout << a << endl;
-//	  }
+	  while (!file.eof())
+	  {
+		  file >> a;
+		  cout << a << endl;
+	  }
 		getchar();
 	  file.close();
 	  file.open("LeftUp.model", std::ifstream::in);
@@ -867,7 +867,7 @@ namespace ibb
 		ifp = fopen("LeftUp.model", "r");
 		
 		if (ifp == NULL) {
-			fprintf(stderr, "Can't open input file in.list!\n");
+			fprintf(stderr, "Can't open input file LeftUp.model!\n");
 			exit(1);
 		}
 		
@@ -883,17 +883,40 @@ namespace ibb
 			cout << value << endl;
 			vector<double> item;
 			item.push_back(value);
-			m_model_lift_to_level_right.push_back(item);
+			m_model_lefthand_down_to_middle.push_back(item);
 		}
-		cout << "Verify length: " << m_model_lift_to_level_right.size() << endl;
+		cout << "Verify length: " << m_model_lefthand_down_to_middle.size() << endl;
 		
 		fclose(ifp);
-		
 	}
 	
 	void FrameProcessor::loadModelRightHandUpCLib()
 	{
+		FILE *ifp;
+		ifp = fopen("RightUp.model", "r");
 		
+		if (ifp == NULL) {
+			fprintf(stderr, "Can't open input file RightUp.model!\n");
+			exit(1);
+		}
+		
+		int length = -1, dims = -1;
+		fscanf(ifp, "%d %d", &length, &dims);
+		cout << "Read in Length:" << length << ", Dim:" << dims << endl;
+		
+		double value = -1.0;
+		while ( !feof(ifp) )
+		{
+			if (fscanf(ifp, "%lf", &value) != 1)
+				break;
+			cout << value << endl;
+			vector<double> item;
+			item.push_back(value);
+			m_model_righthand_down_to_middle.push_back(item);
+		}
+		cout << "Verify length: " << m_model_righthand_down_to_middle.size() << endl;
+		
+		fclose(ifp);
 	}
 }
 
