@@ -98,9 +98,30 @@ namespace ibb
 		vector < vector<double> > m_model_righthand_down_to_middle;
 
 		void ResetTrajectory();
+		void updateMHI(const cv::Mat& img, cv::Mat& dst, int diff_threshold);
+		void RecogniseAction(const cv::Mat& img, cv::Mat& dst);
 
 		DTW m_dtw_left;
 		DTW m_dtw_right;
+
+		//variables for sliding window management - very important in practice!!!
+		int m_sw_duration;		// sliding window length in second
+		int m_sw_length;		// sliding windows in number of frames
+		int m_sw_valid_length;	// number of frames within a sliding window where certain conditions are satisfied, m_sw_duration * m_fps * m_valid_perc;
+		int m_sw_step;			// the number of step the sliding windows should advance when certain conditions are NOT satisfied
+		
+		int m_motion_count;	// number of continuous frames where enough motion detected NOTE: should differentiate different image regions in future
+		int m_motionless_count;	// number of 
+		int m_settle_duration;	// in seconds, the motionless time duration where system set zero
+		double m_fps;
+		double m_valid_perc;	// percentage of the valid sliding window length
+
+		double m_motion_threshold;	// used to decide motionless or not.  
+		double m_motion_ratio;		// motion ratio of current frame
+		double m_silh_threshold;	// threshold for motion check based on the amount of moving silhouette, recommended value is 0.1%, i.e. 0.001
+		double m_silh_ratio;		// silhouette ratio of current frame
+
+		void CalcSlidingWindowParas();
 		
   public:
     FrameProcessor();
@@ -133,9 +154,6 @@ namespace ibb
     void saveConfig();
     void loadConfig();
 	void loadModelLeftHandUp();
-	void loadModelRightHandUp();
-		
-		void updateMHI( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
-		void updateMHI2( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
+	void loadModelRightHandUp();				
   };
 }

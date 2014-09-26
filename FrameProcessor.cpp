@@ -16,6 +16,10 @@ namespace ibb
 	MIN_TIME_DELTA = 0.05;
 	N = 30;
 
+	m_sw_duration = 2;	// check 2 seconds window
+	m_valid_perc = 0.9;	// for 90% of time
+	m_motion_threshold = 0.001;
+
     loadConfig();
     saveConfig();
 
@@ -104,7 +108,7 @@ namespace ibb
   void FrameProcessor::process(const cv::Mat &img_input)
   {
 	  frameNumber++;
-	  std::cout << " [FrameProcessor::process(...)] at Frame " << frameNumber << std::endl;	    
+	  std::cout << "	[[[FrameProcessor::process(...) at Frame " << frameNumber << " ]]]" << std::endl;	    
 	
 	if(savePath.length() > 0)
 	{
@@ -173,6 +177,7 @@ namespace ibb
 
     if(enablePBAS)
 	{
+	  // img_pt_pbas is foreground mask
       process("PBAS", pixelBasedAdaptiveSegmenter, img_prep, img_pt_pbas);
 	  if(saveName.length() > 0 )
 		{
@@ -259,8 +264,8 @@ namespace ibb
 		
 		/// By now we should have the correction positon of the stadning person (through the deteced face
 		/// and/or the upper body detection result)
-		cout << "3.   Run MHI Detection" << endl;
-		updateMHI( img_input, motion, 30 );
+		cout << "3.   Detect Human Action" << endl;
+		RecogniseAction(img_input, motion);
 		imshow( "Motion", motion );
 //		imshow( "Motion History", trj_history );					
 
@@ -292,129 +297,144 @@ namespace ibb
 		//sprintf(rlts, "Left Arm Lifted");
 		//putText( img_prep, rlts, Point(200,45), FONT_HERSHEY_SIMPLEX, 1.00, CV_RGB(255,0,128), 3 );
 //////////////////////////////////////////////////////////////////					
-						
-		double lscore = -1, rscore = -1;
-		char str_trj[128];
-		sprintf(str_trj, "Left Traj Num:%ld", m_lefthand_trajectory.size());
-		putText(img_prep, str_trj, Point(10, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-		sprintf(str_trj, "Prob: %.2f", lscore);
-		putText(img_prep, str_trj, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-
-		sprintf(str_trj, "Right Traj Num:%ld", m_righthand_trajectory.size());
-		int xRight = 2 * img_prep.cols / 3;
-		putText(img_prep, str_trj, Point(xRight, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-		sprintf(str_trj, "Prob: %.2f", rscore);
-		putText(img_prep, str_trj, Point(xRight, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-
-		cv::imshow("Pre Processor", img_prep);
-
-		cout << "Left Model: " << m_model_lefthand_down_to_middle.size() << endl;		
-		cout << "Left Trajectory: " << m_lefthand_trajectory.size() << endl;
-		cout << "Right Model: " << m_model_righthand_down_to_middle.size() << endl;
-		cout << "Right Trajectory: " << m_righthand_trajectory.size() << endl;
-
-		char k;
-		k = waitKey(0);
-		if (k == 'q')
-			exit(1);
-		if (k == 'c')
-		{
-			cout << "	>>>>>>>>>> Trajecotry Cleared <<<<<<<<<<" << endl;
-			ResetTrajectory();
-		}
-			
-		if (k == 'l')
-		{
-			cout << "	@@@@@@@@@@@ Save Left Model @@@@@@@@@@@" << endl;
-			std::ofstream csv;
-			csv.open("LeftUp.model", std::ofstream::out | std::ofstream::trunc);
-			
-			int llen = m_lefthand_trajectory.size();
-			int dim = m_lefthand_trajectory[0].size();
-			
-			csv << llen << " " << dim << endl;
-			for (int i = 0; i < llen; ++i)
-			{
-				if (dim == 1)
-					csv << m_lefthand_trajectory[i][0];
-				else
-				{
-					for (int d = 0; d < dim; ++d)
-					{
-						if (d != (dim - 1))
-							csv << m_lefthand_trajectory[i][d] << ",";
-						else
-							csv << m_lefthand_trajectory[i][d];
-					}
-				}
-				csv << "\n";
-			}
-			csv.close();		
-
-			m_model_lefthand_down_to_middle = m_lefthand_trajectory;
-		}
-
-		if (k == 'r')
-		{
-			cout << "	@@@@@@@@@@@ Save Right Model @@@@@@@@@@@" << endl;
-			std::ofstream csv;
-			csv.open("RightUp.model", std::ofstream::out | std::ofstream::trunc);
-
-			int rlen = m_righthand_trajectory.size();
-			int dim = m_righthand_trajectory[0].size();
-			
-			csv << rlen << " " << dim << endl;
-			for (int i = 0; i < rlen; ++i)
-			{
-				if (dim == 1)
-					csv << m_righthand_trajectory[i][0];
-				else
-				{
-					for (int d = 0; d < dim; ++d)
-					{
-						if (d != (dim - 1))
-							csv << m_righthand_trajectory[i][d] << ",";
-						else
-							csv << m_righthand_trajectory[i][d];
-					}
-				}
-				csv << "\n";
-			}
-			csv.close();
-
-			m_model_righthand_down_to_middle = m_righthand_trajectory;
-		}
-				
-		if (k == 'v')
-		{
-			cout << "Calculate Probability: " << endl;
-			//int ldim = m_lefthand_trajectory[0].size();
-			//m_dtw_left.Initialise(m_model_lefthand_down_to_middle, m_lefthand_trajectory, ldim);
-			//m_dtw_left.ComputeLoaclCostMatrix();
-			//lscore = m_dtw_left.DTWDistance1Step();
-			//cout << "Left Hand Up Probability: " << lscore << endl;
-
-			int rdim = m_righthand_trajectory[0].size();
-			cout << m_model_righthand_down_to_middle.size() << " VS " << m_righthand_trajectory.size() << endl;
-			m_dtw_right.Initialise(m_model_righthand_down_to_middle, m_righthand_trajectory, rdim);
-			m_dtw_right.ComputeLoaclCostMatrix();
-			rscore = m_dtw_right.DTWDistance1Step();
-			cout << "	>>>  Right Hand Up Probability: " << rscore << endl;
-		}
-
-		if (k == 'a')
-		{
-			cout << "Calculate Probability: " << endl;
-			int ldim = m_lefthand_trajectory[0].size();
-			m_dtw_left.Initialise(m_model_lefthand_down_to_middle, m_lefthand_trajectory, ldim);
-			m_dtw_left.ComputeLoaclCostMatrix();
-			lscore = m_dtw_left.DTWDistance1Step();
-			cout << "Left Hand Up Probability: " << lscore << endl;
-		}
+		cv::imshow("Pre Processor", img_prep);	
 
     firstTime = false;
   }
+
+  void FrameProcessor::CalcSlidingWindowParas()
+  {
+	  m_sw_length = m_sw_duration * m_fps;
+	  m_sw_valid_length = m_sw_length * m_valid_perc;
+  }
 	
+  void FrameProcessor::RecogniseAction(const cv::Mat& img, cv::Mat& dst)
+  {
+	  updateMHI(img, dst, 30);
+	  CalcSlidingWindowParas();
+
+	  if (m_silh_ratio < m_silh_threshold)
+	  {
+
+	  }
+	  double lscore = -1, rscore = -1;
+	  char str_trj[128];
+	  sprintf(str_trj, "Left Traj Num:%ld", m_lefthand_trajectory.size());
+	  putText(img_prep, str_trj, Point(10, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+	  sprintf(str_trj, "Prob: %.2f", lscore);
+	  putText(img_prep, str_trj, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+
+	  sprintf(str_trj, "Right Traj Num:%ld", m_righthand_trajectory.size());
+	  int xRight = 2 * img_prep.cols / 3;
+	  putText(img_prep, str_trj, Point(xRight, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+	  sprintf(str_trj, "Prob: %.2f", rscore);
+	  putText(img_prep, str_trj, Point(xRight, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+
+	  cout << "Left Model: " << m_model_lefthand_down_to_middle.size() << endl;
+	  cout << "Left Trajectory: " << m_lefthand_trajectory.size() << endl;
+	  cout << "Right Model: " << m_model_righthand_down_to_middle.size() << endl;
+	  cout << "Right Trajectory: " << m_righthand_trajectory.size() << endl;
+
+	  char k;
+	  k = waitKey(10);
+	  if (k == 'q')
+		  exit(1);
+	  if (k == 'c')
+	  {
+		  cout << "	>>>>>>>>>> Trajecotry Cleared <<<<<<<<<<" << endl;
+		  ResetTrajectory();
+	  }
+
+	  if (k == 'l')
+	  {
+		  cout << "	@@@@@@@@@@@ Save Left Model @@@@@@@@@@@" << endl;
+		  std::ofstream csv;
+		  csv.open("LeftUp.model", std::ofstream::out | std::ofstream::trunc);
+
+		  int llen = m_lefthand_trajectory.size();
+		  int dim = m_lefthand_trajectory[0].size();
+
+		  csv << llen << " " << dim << endl;
+		  for (int i = 0; i < llen; ++i)
+		  {
+			  if (dim == 1)
+				  csv << m_lefthand_trajectory[i][0];
+			  else
+			  {
+				  for (int d = 0; d < dim; ++d)
+				  {
+					  if (d != (dim - 1))
+						  csv << m_lefthand_trajectory[i][d] << ",";
+					  else
+						  csv << m_lefthand_trajectory[i][d];
+				  }
+			  }
+			  csv << "\n";
+		  }
+		  csv.close();
+
+		  m_model_lefthand_down_to_middle = m_lefthand_trajectory;
+	  }
+
+	  if (k == 'r')
+	  {
+		  cout << "	@@@@@@@@@@@ Save Right Model @@@@@@@@@@@" << endl;
+		  std::ofstream csv;
+		  csv.open("RightUp.model", std::ofstream::out | std::ofstream::trunc);
+
+		  int rlen = m_righthand_trajectory.size();
+		  int dim = m_righthand_trajectory[0].size();
+
+		  csv << rlen << " " << dim << endl;
+		  for (int i = 0; i < rlen; ++i)
+		  {
+			  if (dim == 1)
+				  csv << m_righthand_trajectory[i][0];
+			  else
+			  {
+				  for (int d = 0; d < dim; ++d)
+				  {
+					  if (d != (dim - 1))
+						  csv << m_righthand_trajectory[i][d] << ",";
+					  else
+						  csv << m_righthand_trajectory[i][d];
+				  }
+			  }
+			  csv << "\n";
+		  }
+		  csv.close();
+
+		  m_model_righthand_down_to_middle = m_righthand_trajectory;
+	  }
+
+	  if (k == 'v')
+	  {
+		  cout << "Calculate Probability: " << endl;
+		  //int ldim = m_lefthand_trajectory[0].size();
+		  //m_dtw_left.Initialise(m_model_lefthand_down_to_middle, m_lefthand_trajectory, ldim);
+		  //m_dtw_left.ComputeLoaclCostMatrix();
+		  //lscore = m_dtw_left.DTWDistance1Step();
+		  //cout << "Left Hand Up Probability: " << lscore << endl;
+
+		  int rdim = m_righthand_trajectory[0].size();
+		  cout << m_model_righthand_down_to_middle.size() << " VS " << m_righthand_trajectory.size() << endl;
+		  m_dtw_right.Initialise(m_model_righthand_down_to_middle, m_righthand_trajectory, rdim);
+		  m_dtw_right.ComputeLoaclCostMatrix();
+		  rscore = m_dtw_right.DTWDistance1Step();
+		  cout << "	>>>  Right Hand Up Probability: " << rscore << endl;
+	  }
+
+	  if (k == 'a')
+	  {
+		  cout << "Calculate Probability: " << endl;
+		  int ldim = m_lefthand_trajectory[0].size();
+		  m_dtw_left.Initialise(m_model_lefthand_down_to_middle, m_lefthand_trajectory, ldim);
+		  m_dtw_left.ComputeLoaclCostMatrix();
+		  lscore = m_dtw_left.DTWDistance1Step();
+		  cout << "Left Hand Up Probability: " << lscore << endl;
+	  }
+
+  }
   void FrameProcessor::ResetTrajectory()
   {
 	  //vector::clear() does not free memory allocated by the vector to store objects; it calls destructors for the objects it holds.
@@ -427,7 +447,7 @@ namespace ibb
 	 
   }
 
-	void FrameProcessor::updateMHI( const cv::Mat &img, cv::Mat &dst, int diff_threshold)
+  void FrameProcessor::updateMHI( const cv::Mat &img, cv::Mat &dst, int diff_threshold)
 	{
 		double timestamp = (double)clock()/CLOCKS_PER_SEC; // get current time in seconds
 		int idx1 = mhi_last, idx2;
@@ -463,6 +483,11 @@ namespace ibb
 		updateMotionHistory( mhi_silh, mhi, timestamp, MHI_DURATION ); // update MHI
 //		imshow("mhi", mhi);
 		
+		int nc = norm(mhi_silh, NORM_L1); // calculate number of points within silhouette ROI
+		int nz = countNonZero(mhi_silh);		
+		m_silh_ratio = (double)nz / (double)mhi_silh.total();
+		cout << "Norm: " << nc << ", Motion: " << nz << ", Image Area: " << mhi_silh.total() << " - Hence ratio:" << m_silh_ratio << endl;
+
 		// convert MHI to blue 8u image
 		mhi.convertTo(mhi_mask, CV_8U, 255./MHI_DURATION,
 									(MHI_DURATION - timestamp)*255./MHI_DURATION);
@@ -521,6 +546,7 @@ namespace ibb
 			angle = 360.0 - angle;  // adjust for images with top-left origin
 						
 			int count = norm( mhi_silh, NORM_L1 ); // calculate number of points within silhouette ROI
+			cout << "count: " << count << endl;
 			// check for the case of little motion
 			if( count < roi.area() * 0.05 )
 				continue;
@@ -555,9 +581,9 @@ namespace ibb
 		}
 		printf("Motion Component Number: %ld, Too small: %d\n", brects.size(), numTooSmall);
 		
-		double fps = 1 / (timestamp - pre_ts);
+		m_fps = 1 / (timestamp - pre_ts);
 		pre_ts = timestamp;
-		printf("fps: %.2f\n", fps);
+		printf("fps: %.2f\n", m_fps);
 	}
 		
   void FrameProcessor::writeProbToCSV(cv::Mat &in_prob_map)
