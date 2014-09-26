@@ -158,9 +158,5 @@ namespace ibb
 	void loadModelRightHandUp();				
 		void loadModelLeftHandUpCLib();
 		void loadModelRightHandUpCLib();
-		
-		void updateMHI( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
-		void updateMHI2( const cv::Mat& img, cv::Mat& dst, int diff_threshold );
-
   };
 }
