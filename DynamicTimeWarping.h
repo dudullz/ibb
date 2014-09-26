@@ -24,13 +24,12 @@ class DTW
 
 	vector< vector<double> > m_seq1, m_seq2; /*now 2 dimensional*/
 
-	FILE *file1, *file2, *glob, *debug_file, *output_file;
-
-
+	FILE *file1, *file2, *glob, *debug_file, *output_file;	
 public:
 	DTW();
 	DTW( vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, int dim );
 	~DTW();
+	void Release();
 
 	void Initialise(vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, int dim);
 	void ComputeLoaclCostMatrix();

@@ -50,8 +50,17 @@ void DTW::Initialise(vector< vector<double> >& in_seq1, vector< vector<double> >
 
 DTW::~DTW()
 {
+	m_seq1_length = m_seq2_length = m_dims = -1;
+	m_globle_cost.clear();
+	m_dist.clear();
+	m_seq1.clear();
+	m_seq2.clear();
 }
 
+void DTW::Release()
+{
+
+}
 
 void DTW::ComputeLoaclCostMatrix()
 {

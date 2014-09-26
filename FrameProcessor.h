@@ -92,13 +92,30 @@ namespace ibb
 		cv::Mat motion;
 		cv::Mat trj_history;
 
+		int m_modlen_lh_d2m;
+		int m_modlen_lh_m2d;
+		int m_modlen_rh_d2m;
+		int m_modlen_rh_m2d;
+
 		vector < vector<double> > m_lefthand_trajectory;
 		vector < vector<double> > m_righthand_trajectory;
-		vector < vector<double> > m_model_lefthand_down_to_middle;
-		vector < vector<double> > m_model_righthand_down_to_middle;
+
+		vector < vector<double> > m_model_lefthand_down2middle;
+		vector < vector<double> > m_model_lefthand_middle2up;
+		vector < vector<double> > m_model_lefthand_down2up;
+		vector < vector<double> > m_model_lefthand_up2down;
+		vector < vector<double> > m_model_lefthand_up2middle;
+		vector < vector<double> > m_model_lefthand_middle2down;
+
+		vector < vector<double> > m_model_righthand_down2middle;				
+		vector < vector<double> > m_model_righthand_middle2up;
+		vector < vector<double> > m_model_righthand_down2up;
+		vector < vector<double> > m_model_righthand_up2down;
+		vector < vector<double> > m_model_righthand_up2middle;
+		vector < vector<double> > m_model_righthand_middle2down;
 
 		void ResetTrajectory();
-		void updateMHI(const cv::Mat& img, cv::Mat& dst, int diff_threshold);
+		void UpdateMHI(const cv::Mat& img, cv::Mat& dst, int diff_threshold);
 		void RecogniseAction(const cv::Mat& img, cv::Mat& dst);
 
 		DTW m_dtw_left;
@@ -110,16 +127,30 @@ namespace ibb
 		int m_sw_valid_length;	// number of frames within a sliding window where certain conditions are satisfied, m_sw_duration * m_fps * m_valid_perc;
 		int m_sw_step;			// the number of step the sliding windows should advance when certain conditions are NOT satisfied
 		
-		int m_motion_count;	// number of continuous frames where enough motion detected NOTE: should differentiate different image regions in future
-		int m_motionless_count;	// number of 
-		int m_settle_duration;	// in seconds, the motionless time duration where system set zero
+		int m_motion_count;			// number of near continuous frames where enough motion detected NOTE: should differentiate different image regions in future
+		int m_motionless_count;		// number of near continuous frames
+		bool m_empty_scene;
 		double m_fps;
-		double m_valid_perc;	// percentage of the valid sliding window length
+		double m_valid_perc;		// percentage of the valid sliding window length
 
 		double m_motion_threshold;	// used to decide motionless or not.  
 		double m_motion_ratio;		// motion ratio of current frame
 		double m_silh_threshold;	// threshold for motion check based on the amount of moving silhouette, recommended value is 0.1%, i.e. 0.001
 		double m_silh_ratio;		// silhouette ratio of current frame
+
+		double m_score_lh_d2m;		// left hand down to middle
+		double m_score_lh_m2u;		// left hand middle to up
+		double m_score_lh_d2u;		// left hand down to up
+		double m_score_lh_u2m;		// left hand up to middle
+		double m_score_lh_m2d;		// left hand middle to down
+		double m_score_lh_u2d;		// left hand up to down
+		
+		double m_score_rh_d2m;		// right hand down to middle
+		double m_score_rh_m2u;		// right hand middle to up
+		double m_score_rh_d2u;		// right hand down to up
+		double m_score_rh_u2m;		// right hand up to middle
+		double m_score_rh_m2d;		// right hand middle to down
+		double m_score_rh_u2d;		// right hand up to down
 
 		void CalcSlidingWindowParas();
 		

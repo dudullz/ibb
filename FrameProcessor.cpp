@@ -19,6 +19,7 @@ namespace ibb
 	m_sw_duration = 2;	// check 2 seconds window
 	m_valid_perc = 0.9;	// for 90% of time
 	m_motion_threshold = 0.001;
+	m_empty_scene = false;
 
     loadConfig();
     saveConfig();
@@ -314,11 +315,70 @@ namespace ibb
 	
   void FrameProcessor::RecogniseAction(const cv::Mat& img, cv::Mat& dst)
   {
-	  updateMHI(img, dst, 30);
+	  UpdateMHI(img, dst, 30);
 	  CalcSlidingWindowParas();
 
 	  if (m_silh_ratio < m_silh_threshold)
 	  {
+		  m_motionless_count++;
+		  if (m_motionless_count > m_sw_valid_length && !m_empty_scene)
+		  {			 
+			  m_empty_scene = true;
+			  ResetTrajectory();
+		  }
+	  }
+	  else{
+		  /// FIXME  should also check for 'valid' motions
+		  m_motion_count++;
+		  int llen = m_lefthand_trajectory.size();
+		  int rlen = m_righthand_trajectory.size();
+		  if (m_modlen_lh_d2m / 2 < llen < m_modlen_lh_d2m * 1.5)
+		  {
+			  int rdim = m_lefthand_trajectory[0].size();
+			  cout << m_model_lefthand_down2middle.size() << " VS " << m_lefthand_trajectory.size() << endl;
+			  m_dtw_left.Initialise(m_model_lefthand_down2middle, m_lefthand_trajectory, rdim);
+			  m_dtw_left.ComputeLoaclCostMatrix();
+			  m_score_lh_d2m = m_dtw_left.DTWDistance1Step();
+			  cout << "	>>>  Right Hand Up Probability: " << m_score_lh_d2m << endl;
+
+			  m_dtw_left.Release();
+		  }
+
+		  if (m_modlen_lh_m2d / 2 < llen < m_modlen_lh_m2d * 1.5)
+		  {
+			  int rdim = m_lefthand_trajectory[0].size();
+			  cout << m_model_lefthand_middle2down.size() << " VS " << m_lefthand_trajectory.size() << endl;
+			  m_dtw_left.Initialise(m_model_lefthand_middle2down, m_lefthand_trajectory, rdim);
+			  m_dtw_left.ComputeLoaclCostMatrix();
+			  m_score_lh_m2d = m_dtw_left.DTWDistance1Step();
+			  cout << "	>>>  Right Hand Up Probability: " << m_score_lh_m2d << endl;
+
+			  m_dtw_left.Release();
+		  }
+
+		  if (m_modlen_rh_d2m / 2 < rlen < m_modlen_rh_d2m * 1.5)
+		  {
+			  int rdim = m_righthand_trajectory[0].size();
+			  cout << m_model_righthand_down2middle.size() << " VS " << m_righthand_trajectory.size() << endl;
+			  m_dtw_right.Initialise(m_model_righthand_down2middle, m_righthand_trajectory, rdim);
+			  m_dtw_right.ComputeLoaclCostMatrix();
+			  m_score_rh_d2m = m_dtw_right.DTWDistance1Step();
+			  cout << "	>>>  Right Hand Up Probability: " << m_score_rh_d2m << endl;
+
+			  m_dtw_right.Release();
+		  }
+
+		  if (m_modlen_rh_m2d / 2 < rlen < m_modlen_rh_m2d * 1.5)
+		  {
+			  int rdim = m_righthand_trajectory[0].size();
+			  cout << m_model_righthand_middle2down.size() << " VS " << m_righthand_trajectory.size() << endl;
+			  m_dtw_right.Initialise(m_model_righthand_middle2down, m_righthand_trajectory, rdim);
+			  m_dtw_right.ComputeLoaclCostMatrix();
+			  m_score_rh_m2d = m_dtw_right.DTWDistance1Step();
+			  cout << "	>>>  Right Hand Up Probability: " << m_score_rh_m2d << endl;
+
+			  m_dtw_right.Release();
+		  }
 
 	  }
 	  double lscore = -1, rscore = -1;
@@ -334,9 +394,9 @@ namespace ibb
 	  sprintf(str_trj, "Prob: %.2f", rscore);
 	  putText(img_prep, str_trj, Point(xRight, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
 
-	  cout << "Left Model: " << m_model_lefthand_down_to_middle.size() << endl;
+	  cout << "Left Model: " << m_model_lefthand_down2middle.size() << endl;
 	  cout << "Left Trajectory: " << m_lefthand_trajectory.size() << endl;
-	  cout << "Right Model: " << m_model_righthand_down_to_middle.size() << endl;
+	  cout << "Right Model: " << m_model_righthand_down2middle.size() << endl;
 	  cout << "Right Trajectory: " << m_righthand_trajectory.size() << endl;
 
 	  char k;
@@ -377,7 +437,7 @@ namespace ibb
 		  }
 		  csv.close();
 
-		  m_model_lefthand_down_to_middle = m_lefthand_trajectory;
+		  m_model_lefthand_down2middle = m_lefthand_trajectory;
 	  }
 
 	  if (k == 'r')
@@ -408,21 +468,21 @@ namespace ibb
 		  }
 		  csv.close();
 
-		  m_model_righthand_down_to_middle = m_righthand_trajectory;
+		  m_model_righthand_down2middle = m_righthand_trajectory;
 	  }
 
 	  if (k == 'v')
 	  {
 		  cout << "Calculate Probability: " << endl;
 		  //int ldim = m_lefthand_trajectory[0].size();
-		  //m_dtw_left.Initialise(m_model_lefthand_down_to_middle, m_lefthand_trajectory, ldim);
+		  //m_dtw_left.Initialise(m_model_lefthand_down2middle, m_lefthand_trajectory, ldim);
 		  //m_dtw_left.ComputeLoaclCostMatrix();
 		  //lscore = m_dtw_left.DTWDistance1Step();
 		  //cout << "Left Hand Up Probability: " << lscore << endl;
 
 		  int rdim = m_righthand_trajectory[0].size();
-		  cout << m_model_righthand_down_to_middle.size() << " VS " << m_righthand_trajectory.size() << endl;
-		  m_dtw_right.Initialise(m_model_righthand_down_to_middle, m_righthand_trajectory, rdim);
+		  cout << m_model_righthand_down2middle.size() << " VS " << m_righthand_trajectory.size() << endl;
+		  m_dtw_right.Initialise(m_model_righthand_down2middle, m_righthand_trajectory, rdim);
 		  m_dtw_right.ComputeLoaclCostMatrix();
 		  rscore = m_dtw_right.DTWDistance1Step();
 		  cout << "	>>>  Right Hand Up Probability: " << rscore << endl;
@@ -432,7 +492,7 @@ namespace ibb
 	  {
 		  cout << "Calculate Probability: " << endl;
 		  int ldim = m_lefthand_trajectory[0].size();
-		  m_dtw_left.Initialise(m_model_lefthand_down_to_middle, m_lefthand_trajectory, ldim);
+		  m_dtw_left.Initialise(m_model_lefthand_down2middle, m_lefthand_trajectory, ldim);
 		  m_dtw_left.ComputeLoaclCostMatrix();
 		  lscore = m_dtw_left.DTWDistance1Step();
 		  cout << "Left Hand Up Probability: " << lscore << endl;
@@ -451,7 +511,7 @@ namespace ibb
 	 
   }
 
-  void FrameProcessor::updateMHI( const cv::Mat &img, cv::Mat &dst, int diff_threshold)
+  void FrameProcessor::UpdateMHI( const cv::Mat &img, cv::Mat &dst, int diff_threshold)
 	{
 		double timestamp = (double)clock()/CLOCKS_PER_SEC; // get current time in seconds
 		int idx1 = mhi_last, idx2;
@@ -800,7 +860,7 @@ namespace ibb
 			  {
 				  for (int i = 0; i < length; ++i)
 				  {
-					  m_model_lefthand_down_to_middle[i].assign(dims, 0.0);
+					  m_model_lefthand_down2middle[i].assign(dims, 0.0);
 				  }
 			  }
 			  cout << "Dim: " << dims << endl;
@@ -810,15 +870,15 @@ namespace ibb
 			  cout << "value: " << value << endl;
 			  vector<double> item;
 			  item.push_back(value);
-			  m_model_lefthand_down_to_middle.push_back(item);
+			  m_model_lefthand_down2middle.push_back(item);
 		  }
 
 		  count++;
 	  }
-	  m_model_lefthand_down_to_middle.erase(m_model_lefthand_down_to_middle.end()-1);
-	  cout << "Verify length: " << m_model_lefthand_down_to_middle.size() << endl;	  
-	  for (int i = 0; i < m_model_lefthand_down_to_middle.size(); ++i)
-		  cout << i + 1 << ":	" << m_model_lefthand_down_to_middle[i][0] << endl;
+	  m_model_lefthand_down2middle.erase(m_model_lefthand_down2middle.end()-1);
+	  cout << "Verify length: " << m_model_lefthand_down2middle.size() << endl;	  
+	  for (int i = 0; i < m_model_lefthand_down2middle.size(); ++i)
+		  cout << i + 1 << ":	" << m_model_lefthand_down2middle[i][0] << endl;
 
 	  getchar();
 
@@ -862,7 +922,7 @@ namespace ibb
 			  {
 				  for (int i = 0; i < length; ++i)
 				  {
-					  m_model_righthand_down_to_middle[i].assign(dims, 0.0);
+					  m_model_righthand_down2middle[i].assign(dims, 0.0);
 				  }
 			  }
 			  cout << "Dim: " << dims << endl;
@@ -872,15 +932,15 @@ namespace ibb
 			  cout << "value: " << value << endl;
 			  vector<double> item;
 			  item.push_back(value);
-			  m_model_righthand_down_to_middle.push_back(item);
+			  m_model_righthand_down2middle.push_back(item);
 		  }
 
 		  count++;
 	  }
-	  m_model_righthand_down_to_middle.erase(m_model_righthand_down_to_middle.end() - 1);
-	  cout << "Verify length: " << m_model_righthand_down_to_middle.size() << endl;
-	  for (int i = 0; i < m_model_righthand_down_to_middle.size(); ++i)
-		  cout << i + 1 << ":	" << m_model_righthand_down_to_middle[i][0] << endl;
+	  m_model_righthand_down2middle.erase(m_model_righthand_down2middle.end() - 1);
+	  cout << "Verify length: " << m_model_righthand_down2middle.size() << endl;
+	  for (int i = 0; i < m_model_righthand_down2middle.size(); ++i)
+		  cout << i + 1 << ":	" << m_model_righthand_down2middle[i][0] << endl;
 
 	  getchar();
 
@@ -909,9 +969,9 @@ namespace ibb
 			cout << value << endl;
 			vector<double> item;
 			item.push_back(value);
-			m_model_lefthand_down_to_middle.push_back(item);
+			m_model_lefthand_down2middle.push_back(item);
 		}
-		cout << "Verify length: " << m_model_lefthand_down_to_middle.size() << endl;
+		cout << "Verify length: " << m_model_lefthand_down2middle.size() << endl;
 		
 		fclose(ifp);
 	}
@@ -938,9 +998,9 @@ namespace ibb
 			cout << value << endl;
 			vector<double> item;
 			item.push_back(value);
-			m_model_righthand_down_to_middle.push_back(item);
+			m_model_righthand_down2middle.push_back(item);
 		}
-		cout << "Verify length: " << m_model_righthand_down_to_middle.size() << endl;
+		cout << "Verify length: " << m_model_righthand_down2middle.size() << endl;
 		
 		fclose(ifp);
 	}
