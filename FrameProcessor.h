@@ -131,7 +131,7 @@ namespace ibb
 		int m_motionless_count;		// number of near continuous frames
 		bool m_empty_scene;
 		double m_fps;
-		double m_valid_perc;		// percentage of the valid sliding window length
+		double m_valid_perc;		// percentage of the valid sliding window length, recommended 90%
 
 		double m_motion_threshold;	// used to decide motionless or not.  
 		double m_motion_ratio;		// motion ratio of current frame
@@ -151,6 +151,15 @@ namespace ibb
 		double m_score_rh_u2m;		// right hand up to middle
 		double m_score_rh_m2d;		// right hand middle to down
 		double m_score_rh_u2d;		// right hand up to down
+		
+		int m_count_leftup;
+		int m_count_leftdown;
+		int m_count_rightup;
+		int m_count_rightdown;
+
+		int m_count_valid_threshold;	// number of frames that a movement is detected continuously
+
+		bool m_show_debug_info;
 
 		void CalcSlidingWindowParas();
 		
@@ -185,9 +194,13 @@ namespace ibb
     void saveConfig();
     void loadConfig();
 
-	void loadModelLeftHandUp();
-	void loadModelRightHandUp();				
-		void loadModelLeftHandUpCLib();
-		void loadModelRightHandUpCLib();
+	void LoadModelLeftHandUp();
+	void LoadModelLeftHandDown();
+	void LoadModelRightHandUp();
+	void LoadModelRightHandDown();
+		void LoadModelLeftHandUpCLib();
+		void LoadModelLeftHandDownCLib();
+		void LoadModelRightHandUpCLib();
+		void LoadModelRightHandDownCLib();
   };
 }

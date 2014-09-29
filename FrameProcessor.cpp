@@ -11,24 +11,49 @@ namespace ibb
   {
     std::cout << "FrameProcessor()" << std::endl;
 
+	m_show_debug_info = false;
+
 	MHI_DURATION = 2;
 	MAX_TIME_DELTA = 0.3;
 	MIN_TIME_DELTA = 0.05;
 	N = 30;
 
 	m_sw_duration = 2;	// check 2 seconds window
-	m_valid_perc = 0.9;	// for 90% of time
+	m_valid_perc = 0.6;	// for 90% of time
+	m_silh_threshold = 0.001;
 	m_motion_threshold = 0.001;
+	
 	m_empty_scene = false;
+
+	m_score_lh_d2m = 0.0;		// left hand down to middle
+	m_score_lh_m2u = 0.0;		// left hand middle to up
+	m_score_lh_d2u = 0.0;		// left hand down to up
+	m_score_lh_u2m = 0.0;		// left hand up to middle
+	m_score_lh_m2d = 0.0;		// left hand middle to down
+	m_score_lh_u2d = 0.0;		// left hand up to down
+
+	m_score_rh_d2m = 0.0;		// right hand down to middle
+	m_score_rh_m2u = 0.0;		// right hand middle to up
+	m_score_rh_d2u = 0.0;		// right hand down to up
+	m_score_rh_u2m = 0.0;		// right hand up to middle
+	m_score_rh_m2d = 0.0;		// right hand middle to down
+	m_score_rh_u2d = 0.0;		// right hand up to down	 
+
+	m_count_leftup = m_count_leftdown = m_count_rightup = m_count_rightdown = 0;
+	m_count_valid_threshold = 5;
 
     loadConfig();
     saveConfig();
 #ifdef __APPLE__
-		loadModelLeftHandUpCLib();
-		loadModelRightHandUpCLib();
+		LoadModelLeftHandUpCLib();
+		LoadModelLeftHandDownCLib();
+		LoadModelRightHandUpCLib();
+		LoadModelRightHandDownCLib();
 #else
-	loadModelLeftHandUp();
-	loadModelRightHandUp();
+	LoadModelLeftHandUp();
+	LoadModelLeftHandDown();
+	LoadModelRightHandUp();
+	LoadModelRightHandDown();
 #endif
   }
 
@@ -113,7 +138,7 @@ namespace ibb
   void FrameProcessor::process(const cv::Mat &img_input)
   {
 	  frameNumber++;
-	  std::cout << "	[[[FrameProcessor::process(...) at Frame " << frameNumber << " ]]]" << std::endl;	    
+	  std::cout << "	[[[ FrameProcessor::process(...) at Frame " << frameNumber << " ]]]" << std::endl;	    
 	
 	if(savePath.length() > 0)
 	{
@@ -311,15 +336,31 @@ namespace ibb
   {
 	  m_sw_length = m_sw_duration * m_fps;
 	  m_sw_valid_length = m_sw_length * m_valid_perc;
+	  cout << "m_sw_length: " << m_sw_length << ", m_sw_valid_length: " << m_sw_valid_length << endl;
+	  char temp[128];
+	  sprintf(temp, "FPS:%2.f, m_sw_length:%d, m_sw_valid_length:%ld", m_fps, m_sw_length, m_sw_valid_length);
+	  putText(img_prep, temp, Point(10, img_prep.rows - 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 0, 255), 2);
+	  sprintf(temp, "m_motionless_count:%d, m_motion_count:%d", m_motionless_count, m_motion_count);
+	  putText(img_prep, temp, Point(10, img_prep.rows - 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 0, 255), 2);
+
+	  // at the same time draw a cross help to locate the actor
+	  line(img_prep, Point(0, img_prep.rows/2), Point(img_prep.cols, img_prep.rows/2), CV_RGB(255, 0, 0), 2);
+	  line(img_prep, Point(img_prep.cols/2, 0), Point(img_prep.cols/2, img_prep.rows), CV_RGB(255, 0, 0), 2);
   }
 	
   void FrameProcessor::RecogniseAction(const cv::Mat& img, cv::Mat& dst)
   {
 	  UpdateMHI(img, dst, 30);
 	  CalcSlidingWindowParas();
+	  cout << "m_silh_ratio: " << m_silh_ratio << ", m_silh_threshold: " << m_silh_threshold << endl;
+	  cout << "LefhandUp Range: [" << m_modlen_lh_d2m / 2 << ",  " << m_modlen_lh_d2m * 1.5 << " ]" << endl;
+	  cout << "LefhandDown Range: [" << m_modlen_lh_m2d / 2 << ",  " << m_modlen_lh_m2d * 1.5 << " ]" << endl;
+	  cout << "RighthandUp Range: [" << m_modlen_rh_d2m / 2 << ",  " << m_modlen_rh_d2m * 1.5 << " ]" << endl;
+	  cout << "RighthandDown Range: [" << m_modlen_rh_m2d / 2 << ",  " << m_modlen_rh_m2d * 1.5 << " ]" << endl;
 
 	  if (m_silh_ratio < m_silh_threshold)
 	  {
+		  m_motion_count = 0;
 		  m_motionless_count++;
 		  if (m_motionless_count > m_sw_valid_length && !m_empty_scene)
 		  {			 
@@ -328,36 +369,41 @@ namespace ibb
 		  }
 	  }
 	  else{
-		  /// FIXME  should also check for 'valid' motions
+		  /// FIXME  should also check for 'valid' motions from different image regions
+		  m_empty_scene = false;
+		  m_motionless_count = 0;
 		  m_motion_count++;
-		  int llen = m_lefthand_trajectory.size();
-		  int rlen = m_righthand_trajectory.size();
-		  if (m_modlen_lh_d2m / 2 < llen < m_modlen_lh_d2m * 1.5)
+		  int llen = m_lefthand_trajectory.size();		  
+		  if (m_modlen_lh_d2m / 2 < llen && llen < m_modlen_lh_d2m * 1.5)
 		  {
+			  cout << "\n	*** Check if Lefthand Up ***" << endl;
 			  int rdim = m_lefthand_trajectory[0].size();
 			  cout << m_model_lefthand_down2middle.size() << " VS " << m_lefthand_trajectory.size() << endl;
 			  m_dtw_left.Initialise(m_model_lefthand_down2middle, m_lefthand_trajectory, rdim);
 			  m_dtw_left.ComputeLoaclCostMatrix();
 			  m_score_lh_d2m = m_dtw_left.DTWDistance1Step();
-			  cout << "	>>>  Right Hand Up Probability: " << m_score_lh_d2m << endl;
+			  cout << "	>>>  Left Hand Up Probability: " << m_score_lh_d2m << endl;
 
 			  m_dtw_left.Release();
 		  }
 
-		  if (m_modlen_lh_m2d / 2 < llen < m_modlen_lh_m2d * 1.5)
+		  if (llen > m_modlen_lh_m2d / 2 && llen < m_modlen_lh_m2d * 1.5)
 		  {
+			  cout << "\n	*** Check if Lefthand Down ***" << endl;
 			  int rdim = m_lefthand_trajectory[0].size();
 			  cout << m_model_lefthand_middle2down.size() << " VS " << m_lefthand_trajectory.size() << endl;
 			  m_dtw_left.Initialise(m_model_lefthand_middle2down, m_lefthand_trajectory, rdim);
 			  m_dtw_left.ComputeLoaclCostMatrix();
 			  m_score_lh_m2d = m_dtw_left.DTWDistance1Step();
-			  cout << "	>>>  Right Hand Up Probability: " << m_score_lh_m2d << endl;
+			  cout << "	>>>  Left Hand Down Probability: " << m_score_lh_m2d << endl;
 
 			  m_dtw_left.Release();
 		  }
 
-		  if (m_modlen_rh_d2m / 2 < rlen < m_modlen_rh_d2m * 1.5)
+		  int rlen = m_righthand_trajectory.size();
+		  if (m_modlen_rh_d2m / 2 < rlen && rlen < m_modlen_rh_d2m * 1.5)
 		  {
+			  cout << "\n	*** Check if Righthand Up ***" << endl;
 			  int rdim = m_righthand_trajectory[0].size();
 			  cout << m_model_righthand_down2middle.size() << " VS " << m_righthand_trajectory.size() << endl;
 			  m_dtw_right.Initialise(m_model_righthand_down2middle, m_righthand_trajectory, rdim);
@@ -368,36 +414,20 @@ namespace ibb
 			  m_dtw_right.Release();
 		  }
 
-		  if (m_modlen_rh_m2d / 2 < rlen < m_modlen_rh_m2d * 1.5)
+		  if (m_modlen_rh_m2d / 2 < rlen && rlen < m_modlen_rh_m2d * 1.5)
 		  {
+			  cout << "\n	*** Check if Righthand Down ***" << endl;
 			  int rdim = m_righthand_trajectory[0].size();
 			  cout << m_model_righthand_middle2down.size() << " VS " << m_righthand_trajectory.size() << endl;
 			  m_dtw_right.Initialise(m_model_righthand_middle2down, m_righthand_trajectory, rdim);
 			  m_dtw_right.ComputeLoaclCostMatrix();
 			  m_score_rh_m2d = m_dtw_right.DTWDistance1Step();
-			  cout << "	>>>  Right Hand Up Probability: " << m_score_rh_m2d << endl;
+			  cout << "	>>>  Right Hand Down Probability: " << m_score_rh_m2d << endl;
 
 			  m_dtw_right.Release();
 		  }
 
-	  }
-	  double lscore = -1, rscore = -1;
-	  char str_trj[128];
-	  sprintf(str_trj, "Left Traj Num:%ld", m_lefthand_trajectory.size());
-	  putText(img_prep, str_trj, Point(10, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-	  sprintf(str_trj, "Prob: %.2f", lscore);
-	  putText(img_prep, str_trj, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-
-	  sprintf(str_trj, "Right Traj Num:%ld", m_righthand_trajectory.size());
-	  int xRight = 2 * img_prep.cols / 3;
-	  putText(img_prep, str_trj, Point(xRight, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-	  sprintf(str_trj, "Prob: %.2f", rscore);
-	  putText(img_prep, str_trj, Point(xRight, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
-
-	  cout << "Left Model: " << m_model_lefthand_down2middle.size() << endl;
-	  cout << "Left Trajectory: " << m_lefthand_trajectory.size() << endl;
-	  cout << "Right Model: " << m_model_righthand_down2middle.size() << endl;
-	  cout << "Right Trajectory: " << m_righthand_trajectory.size() << endl;
+	  }  
 
 	  char k;
 	  k = waitKey(10);
@@ -411,7 +441,7 @@ namespace ibb
 
 	  if (k == 'l')
 	  {
-		  cout << "	@@@@@@@@@@@ Save Left Model @@@@@@@@@@@" << endl;
+		  cout << "	@@@@@@@@@@@ Save Lefthand Up Model @@@@@@@@@@@" << endl;
 		  std::ofstream csv;
 		  csv.open("LeftUp.model", std::ofstream::out | std::ofstream::trunc);
 
@@ -438,11 +468,44 @@ namespace ibb
 		  csv.close();
 
 		  m_model_lefthand_down2middle = m_lefthand_trajectory;
+		  //m_lefthand_trajectory.clear();
+	  }
+
+	  if (k == 'd')
+	  {
+		  cout << "	@@@@@@@@@@@ Save Lefthand Down Model @@@@@@@@@@@" << endl;
+		  std::ofstream csv;
+		  csv.open("LeftDown.model", std::ofstream::out | std::ofstream::trunc);
+
+		  int llen = m_lefthand_trajectory.size();
+		  int dim = m_lefthand_trajectory[0].size();
+
+		  csv << llen << " " << dim << endl;
+		  for (int i = 0; i < llen; ++i)
+		  {
+			  if (dim == 1)
+				  csv << m_lefthand_trajectory[i][0];
+			  else
+			  {
+				  for (int d = 0; d < dim; ++d)
+				  {
+					  if (d != (dim - 1))
+						  csv << m_lefthand_trajectory[i][d] << ",";
+					  else
+						  csv << m_lefthand_trajectory[i][d];
+				  }
+			  }
+			  csv << "\n";
+		  }
+		  csv.close();
+
+		  m_model_lefthand_middle2down = m_lefthand_trajectory;
+		  //m_lefthand_trajectory.clear();
 	  }
 
 	  if (k == 'r')
 	  {
-		  cout << "	@@@@@@@@@@@ Save Right Model @@@@@@@@@@@" << endl;
+		  cout << "	@@@@@@@@@@@ Save Righthand Up Model @@@@@@@@@@@" << endl;
 		  std::ofstream csv;
 		  csv.open("RightUp.model", std::ofstream::out | std::ofstream::trunc);
 
@@ -469,23 +532,53 @@ namespace ibb
 		  csv.close();
 
 		  m_model_righthand_down2middle = m_righthand_trajectory;
+		  //m_righthand_trajectory.clear();
+	  }
+
+	  if (k == 'w')
+	  {
+		  cout << "	@@@@@@@@@@@ Save Righthand Down Model @@@@@@@@@@@" << endl;
+		  std::ofstream csv;
+		  csv.open("RightDown.model", std::ofstream::out | std::ofstream::trunc);
+
+		  int rlen = m_righthand_trajectory.size();
+		  int dim = m_righthand_trajectory[0].size();
+
+		  csv << rlen << " " << dim << endl;
+		  for (int i = 0; i < rlen; ++i)
+		  {
+			  if (dim == 1)
+				  csv << m_righthand_trajectory[i][0];
+			  else
+			  {
+				  for (int d = 0; d < dim; ++d)
+				  {
+					  if (d != (dim - 1))
+						  csv << m_righthand_trajectory[i][d] << ",";
+					  else
+						  csv << m_righthand_trajectory[i][d];
+				  }
+			  }
+			  csv << "\n";
+		  }
+		  csv.close();
+
+		  m_model_righthand_middle2down = m_righthand_trajectory;
+		  //m_righthand_trajectory.clear();
 	  }
 
 	  if (k == 'v')
 	  {
 		  cout << "Calculate Probability: " << endl;
-		  //int ldim = m_lefthand_trajectory[0].size();
-		  //m_dtw_left.Initialise(m_model_lefthand_down2middle, m_lefthand_trajectory, ldim);
-		  //m_dtw_left.ComputeLoaclCostMatrix();
-		  //lscore = m_dtw_left.DTWDistance1Step();
-		  //cout << "Left Hand Up Probability: " << lscore << endl;
 
 		  int rdim = m_righthand_trajectory[0].size();
 		  cout << m_model_righthand_down2middle.size() << " VS " << m_righthand_trajectory.size() << endl;
 		  m_dtw_right.Initialise(m_model_righthand_down2middle, m_righthand_trajectory, rdim);
 		  m_dtw_right.ComputeLoaclCostMatrix();
-		  rscore = m_dtw_right.DTWDistance1Step();
-		  cout << "	>>>  Right Hand Up Probability: " << rscore << endl;
+		  m_score_rh_d2m = m_dtw_right.DTWDistance1Step();
+		  cout << "	>>>  Right Hand Up Probability: " << m_score_rh_d2m << endl;
+
+		  m_dtw_right.Release();
 	  }
 
 	  if (k == 'a')
@@ -494,10 +587,79 @@ namespace ibb
 		  int ldim = m_lefthand_trajectory[0].size();
 		  m_dtw_left.Initialise(m_model_lefthand_down2middle, m_lefthand_trajectory, ldim);
 		  m_dtw_left.ComputeLoaclCostMatrix();
-		  lscore = m_dtw_left.DTWDistance1Step();
-		  cout << "Left Hand Up Probability: " << lscore << endl;
+		  m_score_lh_d2m = m_dtw_left.DTWDistance1Step();
+		  cout << "Left Hand Up Probability: " << m_score_lh_d2m << endl;
+
+		  m_dtw_left.Release();
 	  }
 
+	  char str_trj[128];
+	  sprintf(str_trj, "Left Traj Num:%ld", m_lefthand_trajectory.size());
+	  putText(img_prep, str_trj, Point(10, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+
+	  if (0 < m_score_lh_d2m && m_score_lh_d2m < 500)
+	  {
+		  m_count_leftup++;
+		  sprintf(str_trj, "Left Hand Up!");
+	  }
+	  else
+		  sprintf(str_trj, "LeftUp Prob: %.2f", m_score_lh_d2m);
+	  putText(img_prep, str_trj, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+
+	  if (0 < m_score_lh_m2d && m_score_lh_m2d < 500)
+	  {
+		  m_count_leftdown++;
+		  sprintf(str_trj, "Left Hand Down!");
+	  }
+	  else
+		  sprintf(str_trj, "LeftDown Prob: %.2f", m_score_lh_m2d);
+	  putText(img_prep, str_trj, Point(10, 60), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+
+	  int xRight = 2 * img_prep.cols / 3;
+	  sprintf(str_trj, "Right Traj Num:%ld", m_righthand_trajectory.size());
+	  putText(img_prep, str_trj, Point(xRight, 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+	  	  
+	  if (0.0 < m_score_rh_d2m && m_score_rh_d2m < 500)
+	  {
+		  m_count_rightup++;
+		  sprintf(str_trj, "Right Hand Up!");
+	  }
+	  else
+		  sprintf(str_trj, "RightUp Prob: %.2f", m_score_rh_d2m);
+	  putText(img_prep, str_trj, Point(xRight, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);		  
+
+	  if (0.0 < m_score_rh_m2d && m_score_rh_m2d < 500)
+	  {
+		  m_count_rightdown++;
+		  sprintf(str_trj, "Right Hand Down!");
+	  }
+	  else
+		  sprintf(str_trj, "RightDown Prob: %.2f", m_score_rh_m2d);
+	  putText(img_prep, str_trj, Point(xRight, 60), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+
+	  cout << "	< Left Trajectory: " << m_lefthand_trajectory.size() << " >" << endl;
+	  cout << "LeftUp Model: " << m_model_lefthand_down2middle.size() << endl;
+	  cout << "LeftDown Model: " << m_model_lefthand_middle2down.size() << endl;
+
+	  cout << "	< Right Trajectory: " << m_righthand_trajectory.size() << " >" << endl;
+	  cout << "RightUp Model: " << m_model_righthand_down2middle.size() << endl;
+	  cout << "RightDown Model: " << m_model_righthand_middle2down.size() << endl;
+
+	  if (m_motionless_count >= m_count_valid_threshold)
+	  {
+		  if (m_count_leftup >= m_count_valid_threshold || m_count_leftdown >= m_count_valid_threshold)
+		  {
+			  m_count_leftup = m_count_leftdown = 0;
+			  m_lefthand_trajectory.clear();
+			  m_score_lh_d2m = m_score_lh_m2d = 0.0;
+		  }
+		  if (m_count_rightup >= m_count_valid_threshold || m_count_rightdown >= m_count_valid_threshold)
+		  {
+			  m_count_rightup = m_count_rightdown = 0;
+			  m_righthand_trajectory.clear();
+			  m_score_rh_d2m = m_score_rh_m2d = 0.0;
+		  }
+	  }
   }
   void FrameProcessor::ResetTrajectory()
   {
@@ -508,7 +670,22 @@ namespace ibb
 	  //Actual "memory management" is supposed to be abstracted away by std::vector. What's important is that after clear the objects are destroyed and the memory is, well... Not released as in "operator delete", but released as in "it's now available to be reused by new objects in the vector or returned to the operating system", which is whas I tried to say here- indeed imprecisely.
 	  m_lefthand_trajectory.clear();
 	  m_righthand_trajectory.clear();
-	 
+
+	  m_score_lh_d2m = 0.0;		// left hand down to middle
+	  m_score_lh_m2u = 0.0;		// left hand middle to up
+	  m_score_lh_d2u = 0.0;		// left hand down to up
+	  m_score_lh_u2m = 0.0;		// left hand up to middle
+	  m_score_lh_m2d = 0.0;		// left hand middle to down
+	  m_score_lh_u2d = 0.0;		// left hand up to down
+
+	  m_score_rh_d2m = 0.0;		// right hand down to middle
+	  m_score_rh_m2u = 0.0;		// right hand middle to up
+	  m_score_rh_d2u = 0.0;		// right hand down to up
+	  m_score_rh_u2m = 0.0;		// right hand up to middle
+	  m_score_rh_m2d = 0.0;		// right hand middle to down
+	  m_score_rh_u2d = 0.0;		// right hand up to down	 
+
+	  m_count_leftup = m_count_leftdown = m_count_rightup = m_count_rightdown = 0;
   }
 
   void FrameProcessor::UpdateMHI( const cv::Mat &img, cv::Mat &dst, int diff_threshold)
@@ -562,7 +739,7 @@ namespace ibb
 		if( (timestamp - pre_reset_ts) > 1000.0 )
 		{
 			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
-			ResetTrajectory();
+			//ResetTrajectory();
 			pre_reset_ts = timestamp;
 		}
 		
@@ -570,7 +747,7 @@ namespace ibb
 //		imshow( "mask", mhi_mask );
 		// calculate motion gradient orientation and valid orientation mask
 		calcMotionGradient( mhi, mhi_mask, mhi_orient, MAX_TIME_DELTA, MIN_TIME_DELTA, 3 );
-		imshow("mhi_orient", mhi_mask);
+		//imshow("mhi_orient", mhi_mask);	// the mask here should only contain 1,2,3,... small integers???
 		// segment motion: get sequence of motion components
 		// segmask is marked motion components map. It is not used further
 		vector<Rect> brects;
@@ -602,7 +779,9 @@ namespace ibb
 				magnitude = 30;
 				maski = mhi_mask(roi);
 			}
-			printf("	ROI %d: (%d,%d)-%dx%d-%d\n", i, roi.x, roi.y, roi.width, roi.height, roi.area());
+
+			if (m_show_debug_info)
+				printf("	ROI %d: (%d,%d)-%dx%d-%d\n", i, roi.x, roi.y, roi.width, roi.height, roi.area());
 //			if( i == 0)
 //				imshow("Maski", maski);
 			// calculate orientation
@@ -610,7 +789,9 @@ namespace ibb
 			angle = 360.0 - angle;  // adjust for images with top-left origin
 						
 			int count = norm( mhi_silh, NORM_L1 ); // calculate number of points within silhouette ROI
-			cout << "count: " << count << endl;
+
+			if (m_show_debug_info)
+				cout << "count: " << count << endl;
 			// check for the case of little motion
 			if( count < roi.area() * 0.05 )
 				continue;
@@ -628,9 +809,12 @@ namespace ibb
 			}
 			
 			char temp[64];
-			sprintf(temp, "Angle:%.2f", angle);
-			if (i >= 0)
-				printf("%s, xPos:%d\n", temp, roi.x);
+				sprintf(temp, "Angle:%.2f", angle);
+			if (m_show_debug_info)
+			{					
+				if (i >= 0)
+					printf("%s, xPos:%d\n", temp, roi.x);
+			}
 			
 			// draw a clock with arrow indicating the direction
 			Point center( roi.x + roi.width/2, roi.y + roi.height/2 );
@@ -643,7 +827,8 @@ namespace ibb
 			putText( dst, temp, center, FONT_HERSHEY_SIMPLEX, 0.55, color, 2 );
 			
 		}
-		printf("Motion Component Number: %ld, Too small: %d\n", brects.size(), numTooSmall);
+		if (m_show_debug_info)
+			printf("Motion Component Number: %ld, Too small: %d\n", brects.size(), numTooSmall);
 		
 		m_fps = 1 / (timestamp - pre_ts);
 		pre_ts = timestamp;
@@ -800,12 +985,12 @@ namespace ibb
     cvReleaseFileStorage(&fs);
   }
 
-  void FrameProcessor::loadModelLeftHandUp()
+  void FrameProcessor::LoadModelLeftHandUp()
   {
-	  cout << "Load Left Hand Model " << endl;
+	  cout << "Load Lefthand Up Model " << endl;
 	  std::ifstream file;
 
-	  file.open("LeftUp.model", std::ifstream::in);
+	  //file.open("LeftUp.model", std::ifstream::in);
 		
 //		cout << "3" << endl;
 //		if (file.good())
@@ -832,33 +1017,34 @@ namespace ibb
 //	  while (getline(file, line))
 //			cout << line << endl;
 
-	  double a = -1.0;
-	  while (!file.eof())
-	  {
-		  file >> a;
-		  cout << a << endl;
-	  }
-		getchar();
-	  file.close();
+	 // double a = -1.0;
+	 // while (!file.eof())
+	 // {
+		//  file >> a;
+		//  cout << a << endl;
+	 // }
+		//getchar();
+	 // file.close();
+
 	  file.open("LeftUp.model", std::ifstream::in);
-	  //file.seekg(0, file.beg);
+	  //file.seekg(0);
 	  int count = 0;
-	  int length = -1, dims = -1;
+	  int dims = -1;
 	  double value;
 	  while (!file.eof())
 	  {
 		  if (count == 0)
 		  {
-			  file >> length;
+			  file >> m_modlen_lh_d2m;
 			  
-			  cout << "Length: " << length << endl;
+			  cout << "Length: " << m_modlen_lh_d2m << endl;
 		  }
 		  else if (count == 1)
 		  {
 			  file >> dims;
 			  if (dims > 1)
 			  {
-				  for (int i = 0; i < length; ++i)
+				  for (int i = 0; i < m_modlen_lh_d2m; ++i)
 				  {
 					  m_model_lefthand_down2middle[i].assign(dims, 0.0);
 				  }
@@ -885,42 +1071,104 @@ namespace ibb
 	  file.close();
   }
 
-  void FrameProcessor::loadModelRightHandUp()
+  void FrameProcessor::LoadModelLeftHandDown()
   {
-	  cout << "Load Right Hand Model" << endl;
+	  cout << "Load Lefthand Downd Model " << endl;
 	  std::ifstream file;
-	  file.open("RightUp.model", std::ifstream::in);
-	  string line;
-	  //while (getline(file, line))
-	  // cout << line << endl;
 
-	  double a = -1;
-	  while (!file.eof())
-	  {
-		  file >> a;
-		  cout << a << endl;
-	  }
-		getchar();
-	  file.close();
-	  file.open("RightUp.model", std::ifstream::in);
+	  //file.open("LeftDown.model", std::ifstream::in);
+	  //double a = -1.0;
+	  //while (!file.eof())
+	  //{
+		 // file >> a;
+		 // cout << a << endl;
+	  //}
+	  //getchar();
+	  //file.close();
+
+	  file.open("LeftDown.model", std::ifstream::in);
 	  //file.seekg(0, file.beg);
 	  int count = 0;
-	  int length = -1, dims = -1;
+	  int dims = -1;
 	  double value;
 	  while (!file.eof())
 	  {
 		  if (count == 0)
 		  {
-			  file >> length;
+			  file >> m_modlen_lh_m2d;
 
-			  cout << "Length: " << length << endl;
+			  cout << "Length: " << m_modlen_lh_m2d << endl;
 		  }
 		  else if (count == 1)
 		  {
 			  file >> dims;
 			  if (dims > 1)
 			  {
-				  for (int i = 0; i < length; ++i)
+				  for (int i = 0; i < m_modlen_lh_m2d; ++i)
+				  {
+					  m_model_lefthand_middle2down[i].assign(dims, 0.0);
+				  }
+			  }
+			  cout << "Dim: " << dims << endl;
+		  }
+		  else{
+			  file >> value;
+			  cout << "value: " << value << endl;
+			  vector<double> item;
+			  item.push_back(value);
+			  m_model_lefthand_middle2down.push_back(item);
+		  }
+
+		  count++;
+	  }
+	  m_model_lefthand_middle2down.erase(m_model_lefthand_middle2down.end() - 1);
+	  cout << "Verify length: " << m_model_lefthand_middle2down.size() << endl;
+	  for (int i = 0; i < m_model_lefthand_middle2down.size(); ++i)
+		  cout << i + 1 << ":	" << m_model_lefthand_middle2down[i][0] << endl;
+
+	  getchar();
+
+	  file.close();
+  }
+
+  void FrameProcessor::LoadModelRightHandUp()
+  {
+	  cout << "Load Righthand Up Model" << endl;
+	  std::ifstream file;
+
+	 // file.open("RightUp.model", std::ifstream::in);
+	 // string line;
+	 // //while (getline(file, line))
+	 // // cout << line << endl;
+
+	 // double a = -1;
+	 // while (!file.eof())
+	 // {
+		//  file >> a;
+		//  cout << a << endl;
+	 // }
+		//getchar();
+	 // file.close();
+
+	  file.open("RightUp.model", std::ifstream::in);
+	  //file.seekg(0, file.beg);
+	  int count = 0;
+	  int dims = -1;
+	  double value;
+	  while (!file.eof())
+	  {
+		  if (count == 0)
+		  {
+			  file >> m_modlen_rh_d2m;
+
+			  cout << "Length: " << m_modlen_rh_d2m << endl;
+		  }
+		  else if (count == 1)
+		  {
+			  file >> dims;
+			  if (dims > 1)
+			  {
+				  for (int i = 0; i < m_modlen_rh_d2m; ++i)
 				  {
 					  m_model_righthand_down2middle[i].assign(dims, 0.0);
 				  }
@@ -946,8 +1194,72 @@ namespace ibb
 
 	  file.close();
   }
+
+  void FrameProcessor::LoadModelRightHandDown()
+  {
+	  cout << "Load Righthand Down Model" << endl;
+	  std::ifstream file;
+
+	  //file.open("RightDown.model", std::ifstream::in);
+	  //string line;
+	  ////while (getline(file, line))
+	  //// cout << line << endl;
+
+	  //double a = -1;
+	  //while (!file.eof())
+	  //{
+		 // file >> a;
+		 // cout << a << endl;
+	  //}
+	  //getchar();
+	  //file.close();
+
+	  file.open("RightDown.model", std::ifstream::in);
+	  //file.seekg(0, file.beg);
+	  int count = 0;
+	  int dims = -1;
+	  double value;
+	  while (!file.eof())
+	  {
+		  if (count == 0)
+		  {
+			  file >> m_modlen_rh_m2d;
+
+			  cout << "Length: " << m_modlen_rh_m2d << endl;
+		  }
+		  else if (count == 1)
+		  {
+			  file >> dims;
+			  if (dims > 1)
+			  {
+				  for (int i = 0; i < m_modlen_rh_m2d; ++i)
+				  {
+					  m_model_righthand_middle2down[i].assign(dims, 0.0);
+				  }
+			  }
+			  cout << "Dim: " << dims << endl;
+		  }
+		  else{
+			  file >> value;
+			  cout << "value: " << value << endl;
+			  vector<double> item;
+			  item.push_back(value);
+			  m_model_righthand_middle2down.push_back(item);
+		  }
+
+		  count++;
+	  }
+	  m_model_righthand_middle2down.erase(m_model_righthand_middle2down.end() - 1);
+	  cout << "Verify length: " << m_model_righthand_middle2down.size() << endl;
+	  for (int i = 0; i < m_model_righthand_middle2down.size(); ++i)
+		  cout << i + 1 << ":	" << m_model_righthand_middle2down[i][0] << endl;
+
+	  getchar();
+
+	  file.close();
+  }
 	
-	void FrameProcessor::loadModelLeftHandUpCLib()
+	void FrameProcessor::LoadModelLeftHandUpCLib()
 	{
 		FILE *ifp;
 		ifp = fopen("LeftUp.model", "r");
@@ -957,9 +1269,9 @@ namespace ibb
 			exit(1);
 		}
 		
-		int length = -1, dims = -1;
-		fscanf(ifp, "%d %d", &length, &dims);
-		cout << "Read in Length:" << length << ", Dim:" << dims << endl;
+		int dims = -1;
+		fscanf(ifp, "%d %d", &m_modlen_lh_d2m, &dims);
+		cout << "Read in Length:" << m_modlen_lh_d2m << ", Dim:" << dims << endl;
 		
 		double value = -1.0;
 		while ( !feof(ifp) )
@@ -975,8 +1287,37 @@ namespace ibb
 		
 		fclose(ifp);
 	}
+
+	void FrameProcessor::LoadModelLeftHandDownCLib()
+	{
+		FILE *ifp;
+		ifp = fopen("LeftDown.model", "r");
+
+		if (ifp == NULL) {
+			fprintf(stderr, "Can't open input file LeftDown.model!\n");
+			exit(1);
+		}
+
+		int dims = -1;
+		fscanf(ifp, "%d %d", &m_modlen_lh_m2d, &dims);
+		cout << "Read in Length:" << m_modlen_lh_m2d << ", Dim:" << dims << endl;
+
+		double value = -1.0;
+		while (!feof(ifp))
+		{
+			if (fscanf(ifp, "%lf", &value) != 1)
+				break;
+			cout << value << endl;
+			vector<double> item;
+			item.push_back(value);
+			m_model_lefthand_middle2down.push_back(item);
+		}
+		cout << "Verify length: " << m_model_lefthand_middle2down.size() << endl;
+
+		fclose(ifp);
+	}
 	
-	void FrameProcessor::loadModelRightHandUpCLib()
+	void FrameProcessor::LoadModelRightHandUpCLib()
 	{
 		FILE *ifp;
 		ifp = fopen("RightUp.model", "r");
@@ -986,9 +1327,9 @@ namespace ibb
 			exit(1);
 		}
 		
-		int length = -1, dims = -1;
-		fscanf(ifp, "%d %d", &length, &dims);
-		cout << "Read in Length:" << length << ", Dim:" << dims << endl;
+		int dims = -1;
+		fscanf(ifp, "%d %d", &m_modlen_rh_d2m, &dims);
+		cout << "Read in Length:" << m_modlen_rh_d2m << ", Dim:" << dims << endl;
 		
 		double value = -1.0;
 		while ( !feof(ifp) )
@@ -1002,6 +1343,35 @@ namespace ibb
 		}
 		cout << "Verify length: " << m_model_righthand_down2middle.size() << endl;
 		
+		fclose(ifp);
+	}
+
+	void FrameProcessor::LoadModelRightHandDownCLib()
+	{
+		FILE *ifp;
+		ifp = fopen("RightDown.model", "r");
+
+		if (ifp == NULL) {
+			fprintf(stderr, "Can't open input file RightDown.model!\n");
+			exit(1);
+		}
+
+		int dims = -1;
+		fscanf(ifp, "%d %d", &m_modlen_rh_m2d, &dims);
+		cout << "Read in Length:" << m_modlen_rh_m2d << ", Dim:" << dims << endl;
+
+		double value = -1.0;
+		while (!feof(ifp))
+		{
+			if (fscanf(ifp, "%lf", &value) != 1)
+				break;
+			cout << value << endl;
+			vector<double> item;
+			item.push_back(value);
+			m_model_righthand_middle2down.push_back(item);
+		}
+		cout << "Verify length: " << m_model_righthand_middle2down.size() << endl;
+
 		fclose(ifp);
 	}
 }
