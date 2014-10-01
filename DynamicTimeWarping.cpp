@@ -9,6 +9,7 @@ using namespace std;
 
 DTW::DTW()
 {
+	m_show_debug_info = false;
 	m_seq1_length = m_seq2_length = m_dims = -1;
 }
 
@@ -19,7 +20,8 @@ DTW::DTW(vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, i
 
 void DTW::Initialise(vector< vector<double> >& in_seq1, vector< vector<double> >& in_seq2, int dim)
 {
-	cout << "	[DTW::Initialise] " << endl;
+	if (m_show_debug_info)
+		cout << "	[DTW::Initialise] " << endl;
 
 	m_seq1_length = in_seq1.size();
 	m_seq2_length = in_seq2.size();
@@ -36,16 +38,20 @@ void DTW::Initialise(vector< vector<double> >& in_seq1, vector< vector<double> >
 	m_seq1 = in_seq1;
 	m_seq2 = in_seq2;
 
-	cout << "1st Seq:" << m_seq1_length << endl;
-	cout << "2nd Seq:" << m_seq2_length << endl;
-	cout << "Dim:" << m_dims << endl;
+	if (m_show_debug_info)
+	{
+		cout << "1st Seq:" << m_seq1_length << endl;
+		cout << "2nd Seq:" << m_seq2_length << endl;
+		cout << "Dim:" << m_dims << endl;
 
-	cout << "	=== Sequence 1 ===" << endl;
-	for (int i = 0; i < m_seq1_length; ++i)
-		cout << m_seq1[i][0] << endl;
-	cout << "	=== Sequence 2 ===" << endl;
-	for (int i = 0; i < m_seq2_length; ++i)
-		cout << m_seq2[i][0] << endl;
+		cout << "	=== Sequence 1 ===" << endl;
+		for (int i = 0; i < m_seq1_length; ++i)
+			cout << m_seq1[i][0] << endl;
+		cout << "	=== Sequence 2 ===" << endl;
+		for (int i = 0; i < m_seq2_length; ++i)
+			cout << m_seq2[i][0] << endl;
+	}
+
 }
 
 DTW::~DTW()
@@ -64,7 +70,8 @@ void DTW::Release()
 
 void DTW::ComputeLoaclCostMatrix()
 {
-	cout << "	[DTW::ComputeLoaclCostMatrix] " << endl;
+	if (m_show_debug_info)
+		cout << "	[DTW::ComputeLoaclCostMatrix] " << endl;
 
 	for (int i = 0; i < m_seq1_length; ++i)
 		for (int j = 0; j < m_seq2_length; ++j)
@@ -80,7 +87,8 @@ void DTW::ComputeLoaclCostMatrix()
 
 double DTW::DTWDistance1Step()
 {
-	cout << "	[DTW::DTWDistance1Step] " << endl;
+	if (m_show_debug_info)
+		cout << "	[DTW::DTWDistance1Step] " << endl;
 
 	m_globle_cost[0][0] = m_dist[0][0];
 	// the only path for 1st row is the horizontal line
@@ -102,7 +110,8 @@ double DTW::DTWDistance1Step()
 // same as the above function, but excluding the extreme situation of optimal path being vertical or horizontal line, or edges
 double DTW::DTWDistance1StepNoEdges()
 {
-	cout << "	[DTW::DTWDistance1StepNoEdges] " << endl;
+	if (m_show_debug_info)
+		cout << "	[DTW::DTWDistance1StepNoEdges] " << endl;
 
 	m_globle_cost[0][0] = m_dist[0][0];
 	// the only path for 1st row is the horizontal line

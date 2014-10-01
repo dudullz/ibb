@@ -21,6 +21,7 @@ class DTW
 	unsigned int m_dims;
 
 	unsigned int debug; /* debug flag */
+	bool m_show_debug_info;
 
 	vector< vector<double> > m_seq1, m_seq2; /*now 2 dimensional*/
 

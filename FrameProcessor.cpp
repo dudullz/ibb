@@ -297,7 +297,7 @@ namespace ibb
 		cout << "3.   Detect Human Action" << endl;
 		RecogniseAction(img_input, motion);
 		imshow( "Motion", motion );
-//		imshow( "Motion History", trj_history );					
+		imshow( "Motion History", trj_history );					
 
 //********************** For Demo Purpose **********************//
 //////////////////////////////////////////////////////////////////
@@ -340,8 +340,11 @@ namespace ibb
 	  char temp[128];
 	  sprintf(temp, "FPS:%2.f, m_sw_length:%d, m_sw_valid_length:%ld", m_fps, m_sw_length, m_sw_valid_length);
 	  putText(img_prep, temp, Point(10, img_prep.rows - 20), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 0, 255), 2);
-	  sprintf(temp, "m_motionless_count:%d, m_motion_count:%d", m_motionless_count, m_motion_count);
-	  putText(img_prep, temp, Point(10, img_prep.rows - 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 0, 255), 2);
+	  if (m_show_debug_info)
+	  {
+		  sprintf(temp, "m_motionless_count:%d, m_motion_count:%d", m_motionless_count, m_motion_count);
+		  putText(img_prep, temp, Point(10, img_prep.rows - 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 0, 255), 2);
+	  }
 
 	  // at the same time draw a cross help to locate the actor
 	  line(img_prep, Point(0, img_prep.rows/2), Point(img_prep.cols, img_prep.rows/2), CV_RGB(255, 0, 0), 2);
@@ -352,11 +355,14 @@ namespace ibb
   {
 	  UpdateMHI(img, dst, 30);
 	  CalcSlidingWindowParas();
-	  cout << "m_silh_ratio: " << m_silh_ratio << ", m_silh_threshold: " << m_silh_threshold << endl;
-	  cout << "LefhandUp Range: [" << m_modlen_lh_d2m / 2 << ",  " << m_modlen_lh_d2m * 1.5 << " ]" << endl;
-	  cout << "LefhandDown Range: [" << m_modlen_lh_m2d / 2 << ",  " << m_modlen_lh_m2d * 1.5 << " ]" << endl;
-	  cout << "RighthandUp Range: [" << m_modlen_rh_d2m / 2 << ",  " << m_modlen_rh_d2m * 1.5 << " ]" << endl;
-	  cout << "RighthandDown Range: [" << m_modlen_rh_m2d / 2 << ",  " << m_modlen_rh_m2d * 1.5 << " ]" << endl;
+	  if (m_show_debug_info)
+	  {
+		  cout << "m_silh_ratio: " << m_silh_ratio << ", m_silh_threshold: " << m_silh_threshold << endl;
+		  cout << "LefhandUp Range: [" << m_modlen_lh_d2m / 2 << ",  " << m_modlen_lh_d2m * 1.5 << " ]" << endl;
+		  cout << "LefhandDown Range: [" << m_modlen_lh_m2d / 2 << ",  " << m_modlen_lh_m2d * 1.5 << " ]" << endl;
+		  cout << "RighthandUp Range: [" << m_modlen_rh_d2m / 2 << ",  " << m_modlen_rh_d2m * 1.5 << " ]" << endl;
+		  cout << "RighthandDown Range: [" << m_modlen_rh_m2d / 2 << ",  " << m_modlen_rh_m2d * 1.5 << " ]" << endl;
+	  }
 
 	  if (m_silh_ratio < m_silh_threshold)
 	  {
@@ -366,6 +372,7 @@ namespace ibb
 		  {			 
 			  m_empty_scene = true;
 			  ResetTrajectory();
+			  trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
 		  }
 	  }
 	  else{
@@ -601,19 +608,25 @@ namespace ibb
 	  {
 		  m_count_leftup++;
 		  sprintf(str_trj, "Left Hand Up!");
+		  putText(img_prep, str_trj, Point(10, 60), FONT_HERSHEY_SIMPLEX, 0.95, CV_RGB(255, 0, 0), 2);
 	  }
 	  else
+	  {
 		  sprintf(str_trj, "LeftUp Prob: %.2f", m_score_lh_d2m);
-	  putText(img_prep, str_trj, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+		  putText(img_prep, str_trj, Point(10, 60), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+	  }
 
 	  if (0 < m_score_lh_m2d && m_score_lh_m2d < 500)
 	  {
 		  m_count_leftdown++;
 		  sprintf(str_trj, "Left Hand Down!");
+		  putText(img_prep, str_trj, Point(10, 100), FONT_HERSHEY_SIMPLEX, 1.0, CV_RGB(255, 0, 0), 2);
 	  }
 	  else
+	  {
 		  sprintf(str_trj, "LeftDown Prob: %.2f", m_score_lh_m2d);
-	  putText(img_prep, str_trj, Point(10, 60), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+		  putText(img_prep, str_trj, Point(10, 100), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+	  }
 
 	  int xRight = 2 * img_prep.cols / 3;
 	  sprintf(str_trj, "Right Traj Num:%ld", m_righthand_trajectory.size());
@@ -623,19 +636,25 @@ namespace ibb
 	  {
 		  m_count_rightup++;
 		  sprintf(str_trj, "Right Hand Up!");
+		  putText(img_prep, str_trj, Point(xRight - 80, 60), FONT_HERSHEY_SIMPLEX, 1.0, CV_RGB(255, 0, 0), 2);
 	  }
 	  else
+	  {
 		  sprintf(str_trj, "RightUp Prob: %.2f", m_score_rh_d2m);
-	  putText(img_prep, str_trj, Point(xRight, 40), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);		  
+		  putText(img_prep, str_trj, Point(xRight, 60), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+	  }
 
 	  if (0.0 < m_score_rh_m2d && m_score_rh_m2d < 500)
 	  {
 		  m_count_rightdown++;
 		  sprintf(str_trj, "Right Hand Down!");
+		  putText(img_prep, str_trj, Point(xRight - 80, 100), FONT_HERSHEY_SIMPLEX, 1.0, CV_RGB(255, 0, 0), 2);
 	  }
 	  else
+	  {
 		  sprintf(str_trj, "RightDown Prob: %.2f", m_score_rh_m2d);
-	  putText(img_prep, str_trj, Point(xRight, 60), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+		  putText(img_prep, str_trj, Point(xRight, 100), FONT_HERSHEY_SIMPLEX, 0.55, CV_RGB(0, 255, 0), 2);
+	  }
 
 	  cout << "	< Left Trajectory: " << m_lefthand_trajectory.size() << " >" << endl;
 	  cout << "LeftUp Model: " << m_model_lefthand_down2middle.size() << endl;
@@ -727,7 +746,7 @@ namespace ibb
 		int nc = norm(mhi_silh, NORM_L1); // calculate number of points within silhouette ROI
 		int nz = countNonZero(mhi_silh);		
 		m_silh_ratio = (double)nz / (double)mhi_silh.total();
-		cout << "Norm: " << nc << ", Motion: " << nz << ", Image Area: " << mhi_silh.total() << " - Hence ratio:" << m_silh_ratio << endl;
+		cout << "Norm: " << nc << ", Motion: " << nz << ", Image Area: " << mhi_silh.total() << " - ratio:" << m_silh_ratio << endl;
 
 		// convert MHI to blue 8u image
 		mhi.convertTo(mhi_mask, CV_8U, 255./MHI_DURATION,
@@ -736,7 +755,7 @@ namespace ibb
 		dst = Mat::zeros(mhi_mask.size(), CV_8UC3);
 		if( trj_history.empty() )
 			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
-		if( (timestamp - pre_reset_ts) > 1000.0 )
+		if( (timestamp - pre_reset_ts) > 10000.0 )
 		{
 			trj_history = Mat::zeros(mhi_mask.size(), CV_8UC3);
 			//ResetTrajectory();

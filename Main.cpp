@@ -14,7 +14,7 @@ namespace ibb
     static void start(int argc, const char **argv)
     {
       std::cout << "-----------------------------------------" << std::endl;
-      std::cout << "Intelligent Billboard Demo v0.1     " << std::endl;
+      std::cout << "Intelligent Billboard Demo V1.0     " << std::endl;
       std::cout << "-----------------------------------------" << std::endl;
       std::cout << "Using OpenCV version " << CV_VERSION << std::endl;
 
